@@ -4,9 +4,7 @@ from aiohttp import web
 
 from .bot import announce
 
-from utils.datautils import load_config
-
-config = load_config()
+from utils.datautils import config
 
 app = web.Application()
 
@@ -23,11 +21,11 @@ async def process(request):
   botname = names[bot]
   stat = base64.b64decode(bytes(request.query["value"], "utf-8")).decode("utf-8")
   if stat == "READY":
-    await announce("{name} is ready!".format(name = botname))
+    pass # await announce("{name} is ready!".format(name = botname))
   elif stat == "CONNECT":
-    await announce("{name} has connected!".format(name = botname))
+    pass # await announce("{name} has connected!".format(name = botname))
   elif stat == "DISCONNECT":
-    await announce("{name} has disconnected!".format(name = botname))
+    pass # await announce("{name} has disconnected!".format(name = botname))
   return web.Response(text = "success")
 
 app.add_routes([

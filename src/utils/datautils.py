@@ -2,40 +2,29 @@ import json, pickle, sys
 
 from .logging import log
 
-def load_data(filename = "data.pickle"):
-  with open(filename, "rb") as f:
-    try:
-      return pickle.load(f)
-    except:
-      log("Failed to parse data file!", "ERROR")
-      return {}
+data = None
+config = None
 
-def setup_data(data, guilds):
-  if "guilds" not in data: data["guilds"] = {}
-  if "lolrotation" not in data: data["lolrotation"] = 0
-  if "triggers" not in data: data["triggers"] = {}
-  if "command_messages" not in data: data["command_messages"] = {}
-  if "summoner_by_id" not in data: data["summoner_by_id"] = {}
-  if "id_by_summoner" not in data: data["id_by_summoner"] = {}
-  for guild in guilds:
-    add_guild(data, guild)
+with open("data.pickle", "rb") as f:
+  try:
+    data = pickle.load(f)
+  except:
+    log("Failed to parse data file!", "ERROR")
+    data = {}
 
-def add_guild(data, guild):
-  if guild.id not in data["guilds"]:
-    data["guilds"][guild.id] = {}
+with open("config.json", "r") as f:
+  config = json.load(f)
 
-  for key in ("members", "aliases", "puzzlepoints"):
-    if key not in data["guilds"][guild.id]:
-      data["guilds"][guild.id][key] = {}
+def default(key, val, obj = None):
+  if obj == None: obj = data
+  if key not in obj:
+    obj[key] = val
+  return obj[key]
 
-  for key in ("lolrotationwatch", "statreports"):
-    if key not in data["guilds"][guild.id]:
-      data["guilds"][guild.id][key] = set()
-
-def save_data(data, filename = "data.pickle"):
-  with open(filename, "wb") as f:
+def save_data():
+  with open("data.pickle", "wb") as f:
     pickle.dump(data, f)
 
-def load_config(filename = "config.json"):
-  with open(filename, "r") as f:
-    return json.load(f)
+def save_config():
+  with open("config.json", "w") as f:
+    json.dump(config, f)

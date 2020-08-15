@@ -1,6 +1,6 @@
 import base64, discord, requests
 
-from utils.datautils import load_config
+from utils.datautils import config
 from utils.discordbot import BotClient, send
 
 data = None
@@ -33,4 +33,4 @@ async def command_test(command, message):
   await send(message, "Test success!", reaction = "check")
 
 def start():
-  client.run(load_config()["discord-tokens"]["botlane"])
+  client.run(config["discord-tokens"]["botlane"])
