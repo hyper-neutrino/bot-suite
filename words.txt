@@ -1096,6 +1096,7 @@ intelligence
 intend
 intense
 intensity
+intent
 intention
 interaction
 interest

@@ -106,6 +106,13 @@ class BotClient(discord.Client):
     self.name = ""
     self.color = 0x3333AA
   
+  async def on_ready(self):
+    await (self.announce("Hello o/ I am now ready!"))
+  
+  async def announce(self, *args, **kwargs):
+    for gid, cid in default("statreports", set()):
+      await self.get_guild(gid).get_channel(cid).send(*args, **kwargs)
+  
   def command(self, section, regex, syntax, description, case_sensitive = False):
     if section not in self.sections:
       self.sections.append(section)
@@ -148,6 +155,7 @@ class BotClient(discord.Client):
         emojimap = emojis(message.guild)
         if "ping" in emojimap:
           await message.add_reaction(emojimap["ping"])
+      await self.process(message)
       components = shlex.split(message.content)
       if not components: return
       lowered = list(map(str.lower, components))
@@ -194,11 +202,11 @@ class BotClient(discord.Client):
                 await send(message, e.msg, reaction = "x")
               except Exception as e:
                 if show_error:
+                  print(traceback.format_exc())
                   await send(message, traceback.format_exc(), reaction = "!")
               break
           else:
             continue
           break
-      await self.process(message)
     except:
       pass

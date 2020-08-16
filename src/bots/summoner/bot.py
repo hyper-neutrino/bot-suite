@@ -7,22 +7,13 @@ from utils.discordbot import BotClient, send, get_member
 
 client = None
 
-async def announce(*args, **kwargs):
-  if data is None:
-    raise RuntimeError("Data was not loaded yet.")
-  if client is None:
-    raise RuntimeError("Client is not initialized yet.")
-  
-  for gid, cid in default("statreports", set()):
-    await client.get_guild(gid).get_channel(cid).send(*args, **kwargs)
-
 class SummonerClient(BotClient):
   def __init__(self):
     BotClient.__init__(self)
     self.name = "summoner"
 
   async def on_ready(self):
-    await announce("Summoner is now online! Starting the other bots now.")
+    await (self.announce("Summoner is now online! Starting the other bots now."))
     
     start("toplane")
     start("jungler")

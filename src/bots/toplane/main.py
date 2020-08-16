@@ -4,6 +4,7 @@ from utils.datautils import config, data, default, save_data
 from utils.discordbot import BotClient, send
 
 client = None
+connection = None
 
 reddit = praw.Reddit(client_id = config["reddit"]["client-id"], client_secret = config["reddit"]["client-secret"], user_agent = config["reddit"]["user-agent"])
 
@@ -47,8 +48,15 @@ async def anagram_function(message, answer = None, stop = False, start = False):
           bonus = 0
           if time.time() - timestamp <= 5:
             bonus = int(math.floor(points * 0.5))
-          default("anagram", 0, default((message.guild.id, message.author.id), {}, default("puzzlepoints", {})))
-          data()["puzzlepoints"][(message.guild.id, message.author.id)]["anagram"] += points + bonus
+          pp = default("puzzlepoints", {})
+          key = (message.guild.id, message.author.id)
+          if key not in data()["puzzlepoints"]:
+            data()["puzzlepoints"][key] = {}
+            save_data()
+          if "anagram" not in data()["puzzlepoints"][key]:
+            data()["puzzlepoints"][key]["anagram"] = 0
+            save_data()
+          data()["puzzlepoints"][key]["anagram"] += points + bonus
           save_data()
           await send(message, "Congratulations to {name} for winning the anagram puzzle! (+{points}{bonus}){alternatives}".format(
             name = message.author.mention,
@@ -112,13 +120,12 @@ async def command_test(command, message):
 async def command_anagram_start(command, message):
   await anagram_function(message, start = True)
 
-
 @client.command("Puzzle Commands", ["anagram", "stop"], "anagram stop", "stop the anagram puzzle")
 async def command_anagram_stop(command, message):
   await anagram_function(message, stop = True)
 
 @client.command("Puzzle Commands", ["anagram", "restart"], "anagram restart", "restart the anagram puzzle (functionally stop + start but thread-safe)")
-async def command_anagram_stop(command, message):
+async def command_anagram_restart(command, message):
   await anagram_function(message, stop = True, start = True)
 
 @client.command("Puzzle Commands", ["anagram", "hint"], "anagram hint", "reveal one letter from the start and end of the anagram answer (decreases point value by 2)")
@@ -128,7 +135,7 @@ async def command_anagram_stop(command, message):
   else:
     answer, scrambled, hint, timestamp = data()["anagrams"][message.channel.id]
     hint += 1
-    if hint * 2 >= len(answer):
+    if hint * 2 >= len(answer) - 1:
       await anagram_function(message, stop = True)
     else:
       await send(message, "Hint: the current puzzle starts with '{start}' and ends with '{end}' ('{display}').".format(
@@ -259,6 +266,42 @@ async def command_roll(command, message):
       ))
   else:
     await send(message, "Invalid dice configuration! The config must start with xdy (optionally +/- xdy), have zero or more +/- xdy, and optionally end with +/- a modifier.", reaction = "x")
+
+@client.command("Miscellaneous Commands", ["rickroll", ".+"], "rickroll <channel>", "connect to a voice channel and play 'Never Gonna Give You Up' by Rick Astley")
+async def command_rickroll(command, message):
+  global connection
+  if connection:
+    await send(message, "I am already connected to a voice channel!", reaction = "x")
+  else:
+    for channel in await message.guild.fetch_channels():
+      if type(channel) == discord.VoiceChannel and channel.name == command[1]:
+        connection = await channel.connect(timeout = 3)
+        connection.play(await discord.FFmpegOpusAudio.from_probe("rickroll.mp3"))
+    await send(message, "Enjoy :)", reaction = "check")
+
+@client.command("Miscellaneous Commands", ["stickbug", ".+"], "stickbug <channel>", "connect to a voice channel and play the stickbug song")
+async def command_rickroll(command, message):
+  global connection
+  if connection:
+    await send(message, "I am already connected to a voice channel!", reaction = "x")
+  else:
+    for channel in await message.guild.fetch_channels():
+      if type(channel) == discord.VoiceChannel and channel.name == command[1]:
+        connection = await channel.connect(timeout = 3)
+        connection.play(await discord.FFmpegOpusAudio.from_probe("stickbug.mp3"))
+    await send(message, "Enjoy :)", reaction = "check")
+
+@client.command("Miscellaneous Commands", ["gtfo"], "gtfo", "alias for `disconnect`")
+@client.command("Miscellaneous Commands", ["dc"], "dc", "alias for `disconnect`")
+@client.command("Miscellaneous Commands", ["disconnect"], "disconnect", "disconnect from voice")
+async def command_disconnect(command, message):
+  global connection
+  if connection:
+    await connection.disconnect()
+    connection = None
+    await send(message, "Disconnected!", reaction = "check")
+  else:
+    await send(message, "I am not connected to any voice channels!", reaction = "x")
 
 def start():
   client.run(config["discord-tokens"]["toplane"])
