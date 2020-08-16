@@ -1,5 +1,7 @@
 debug.py
 data.pickle
+data-backup.pickle
+data.pickle.lock
 config.json
 
 # Byte-compiled / optimized / DLL files

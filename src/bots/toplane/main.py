@@ -5,12 +5,6 @@ from utils.discordbot import BotClient, send
 
 client = None
 
-def alert(string):
-  try:
-    requests.get("http://127.0.0.1:5995/?bot=toplane&value=" + base64.b64encode(bytes(string, "utf-8")).decode("utf-8"))
-  except:
-    pass
-
 reddit = praw.Reddit(client_id = config["reddit"]["client-id"], client_secret = config["reddit"]["client-secret"], user_agent = config["reddit"]["user-agent"])
 
 anagram_lock = asyncio.Lock()
@@ -33,27 +27,29 @@ async def anagram_function(message, answer = None, stop = False, start = False):
   async with anagram_lock:
     if stop:
       if message.channel.id in default("anagrams", {}):
-        actual, _, _, _ = data["anagrams"][message.channel.id]
+        actual, _, _, _ = data()["anagrams"][message.channel.id]
         if len(wordmap[tuple(sorted(actual))]) == 1:
           await send(message, "Anagram puzzle ended! The correct answer was: '{actual}'.".format(actual = actual), reaction = "check")
         else:
           await send(message, "Anagram puzzle ended! The correct answers were: {answers}".format(
             answers = ", ".join("'{word}'".format(word = ans) for ans in wordmap[tuple(sorted(actual))])
           ))
-        del data["anagrams"][message.channel.id]
+        del data()["anagrams"][message.channel.id]
+        save_data()
       else:
         await send(message, "There is no anagram puzzle in this channel!", reaction = "x")
     if answer:
       correct = False
       if message.channel.id in default("anagrams", {}):
-        actual, _, hint, timestamp = data["anagrams"][message.channel.id]
+        actual, _, hint, timestamp = data()["anagrams"][message.channel.id]
         if sorted(answer.lower()) == sorted(actual.lower()) and answer.lower() in words:
           points = max(len(answer) - hint * 2, 0)
           bonus = 0
           if time.time() - timestamp <= 5:
             bonus = int(math.floor(points * 0.5))
           default("anagram", 0, default((message.guild.id, message.author.id), {}, default("puzzlepoints", {})))
-          data["puzzlepoints"][(message.guild.id, message.author.id)]["anagram"] += points + bonus
+          data()["puzzlepoints"][(message.guild.id, message.author.id)]["anagram"] += points + bonus
+          save_data()
           await send(message, "Congratulations to {name} for winning the anagram puzzle! (+{points}{bonus}){alternatives}".format(
             name = message.author.mention,
             points = points,
@@ -64,10 +60,11 @@ async def anagram_function(message, answer = None, stop = False, start = False):
           ), reaction = "check")
           correct = True
           default("anagramninja", {})[message.channel.id] = (actual, time.time())
-          del data["anagrams"][message.channel.id]
+          del data()["anagrams"][message.channel.id]
+          save_data()
           start = True
       if not correct and message.channel.id in default("anagramninja", {}):
-        actual, timestamp = data["anagramninja"][message.channel.id]
+        actual, timestamp = data()["anagramninja"][message.channel.id]
         if time.time() - timestamp <= 1 and sorted(answer.lower()) == sorted(actual.lower()) and answer.lower() in words:
           await send(message, "{user} L".format(user = message.author.mention), reaction = "x")
     if start:
@@ -76,10 +73,11 @@ async def anagram_function(message, answer = None, stop = False, start = False):
         cl = list(answer)
         random.shuffle(cl)
         scrambled = "".join(cl)
-        data["anagrams"][message.channel.id] = (answer, scrambled, 0, time.time())
+        data()["anagrams"][message.channel.id] = (answer, scrambled, 0, time.time())
+        save_data()
         await send(message, "Anagram puzzle! Solve for: '{scrambled}'.".format(scrambled = scrambled))
       else:
-        actual, scrambled, hint, _ = data["anagrams"][message.channel.id]
+        actual, scrambled, hint, _ = data()["anagrams"][message.channel.id]
         await send(message, "An anagram puzzle is already running! Solve for: '{display}'.".format(
           display = display(actual, scrambled, hint)
         ), reaction = "x")
@@ -92,15 +90,6 @@ class ToplaneClient(BotClient):
 
   async def process(self, message):
     await anagram_function(message, answer = re.sub("[?!.,\"'()\\[\\]{}> `*_~]", "", message.content.strip()))
-
-  async def on_ready(self):
-    alert("READY")
-  
-  async def on_connect(self):
-    alert("CONNECT")
-  
-  async def on_disconnect(self):
-    alert("DISCONNECT")
 
 with open("words.txt", "r") as f:
   words = list(map(str.strip, f.read().strip().splitlines()))
@@ -137,7 +126,7 @@ async def command_anagram_stop(command, message):
   if message.channel.id not in default("anagrams", {}):
     await send(message, "There is no anagram puzzle in this channel!", reaction = "x")
   else:
-    answer, scrambled, hint, timestamp = data["anagrams"][message.channel.id]
+    answer, scrambled, hint, timestamp = data()["anagrams"][message.channel.id]
     hint += 1
     if hint * 2 >= len(answer):
       await anagram_function(message, stop = True)
@@ -147,19 +136,21 @@ async def command_anagram_stop(command, message):
         end = answer[-hint:],
         display = display(answer, scrambled, hint)
       ), reaction = "check")
-      data["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
+      data()["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
+      save_data()
 
 @client.command("Puzzle Commands", ["anagram", "reorder"], "anagram reorder", "reorder the anagram puzzle")
 async def command_anagram_reorder(command, message):
   if message.channel.id not in default("anagrams", {}):
     await send(message, "There is no anagram puzzle in this channel!", reaction = "x")
   else:
-    answer, scrambled, hint, timestamp = data["anagrams"][message.channel.id]
+    answer, scrambled, hint, timestamp = data()["anagrams"][message.channel.id]
     cl = list(scrambled)
     random.shuffle(cl)
     scrambled = "".join(cl)
     await send(message, "Reordered: solve for '{display}'.".format(display = display(answer, scrambled, hint)), reaction = "check")
-    data["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
+    data()["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
+    save_data()
 
 @client.command("Puzzle Commands", ["anagram", "add", ".+"], "anagram add <word>", "add a word to the dictionary (must be all lowercase letters, at least 5 letters long)")
 async def command_anagram_add(command, message):
@@ -189,7 +180,7 @@ async def command_anagram_remove(command, message):
 async def command_anagram_leaderboard(command, message):
   scores = []
   for gid, mid in default("puzzlepoints", {}):
-    points = data["puzzlepoints"][(gid, mid)].get("anagram", 0)
+    points = data()["puzzlepoints"][(gid, mid)].get("anagram", 0)
     if points:
       scores.append((points, message.guild.get_member(mid)))
   scores.sort(reverse = True)

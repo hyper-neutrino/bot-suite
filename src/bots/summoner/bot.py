@@ -119,6 +119,7 @@ async def command_ignore(command, message):
       await send(message, "You cannot {verb} {name} as they are a sudo user!".format(verb = command[0], name = member.display_name))
     else:
       default("ignore", {})[(message.guild.id, member.id)] = time.time() + int(command[2]) if len(command) > 2 else -1
+      save_data()
       if len(command) > 2:
         await send(message, ("Bonk! " if command[0] == "bonk" else "") + "{mention} is being ignored for {time} second{plural}!".format(
           mention = member.mention,
@@ -136,8 +137,9 @@ async def command_unignore(command, message):
     await send(message, "If you were ignored, you would not be able to unignore yourself. Since you aren't, this command doesn't change anything. Please reconsider your choices.", reaction = "x")
   else:
     key = (message.guild.id, member.id)
-    if key in default("ignore", {}) and (data["ignore"][key] == -1 or data["ignore"][key] > time.time()):
-      del data["ignore"][key]
+    if key in default("ignore", {}) and (data()["ignore"][key] == -1 or data()["ignore"][key] > time.time()):
+      del data()["ignore"][key]
+      save_data()
       await send(message, "{mention} is no longer being ignored!".format(mention = member.mention))
     else:
       await send(message, "{name} is not currently ignored!".format(name = member.display_name))

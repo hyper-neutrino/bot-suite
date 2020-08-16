@@ -2,7 +2,6 @@ import asyncio
 
 from .bot import client
 from .botmanager import start, stop
-from .callbackserver import start_server
 
 from utils.datautils import config
   
@@ -18,6 +17,5 @@ def start():
   loop = asyncio.get_event_loop()
   loop.run_until_complete(asyncio.gather(
     heartbeat(),
-    discord(),
-    start_server()
+    discord()
   ))

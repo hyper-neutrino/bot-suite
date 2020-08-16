@@ -67,7 +67,7 @@ async def get_member(guild, string, caller = None):
   elif string.lower() == "me" or string.lower() == "myself":
     return caller
   if (guild.id, string.lower()) in default("aliases", {}):
-    return await guild.fetch_member(data["aliases"][(guild.id, string.lower())])
+    return await guild.fetch_member(data()["aliases"][(guild.id, string.lower())])
   raise BotError("Found no users with that identity; please check your spelling.")
 
 def get_role(guild, string):
@@ -139,63 +139,66 @@ class BotClient(discord.Client):
     await send(message, embed = embed, reaction = "check")
 
   async def on_message(self, message):
-    if message.guild:
-      key = (message.guild.id, message.author.id)
-      if key in default("ignore", {}) and (data["ignore"][key] == -1 or data["ignore"][key] > time.time()):
-        return
-    if message.mention_everyone:
-      emojimap = emojis(message.guild)
-      if "ping" in emojimap:
-        await message.add_reaction(emojimap["ping"])
-    components = shlex.split(message.content)
-    if not components: return
-    lowered = list(map(str.lower, components))
-    if lowered == ["pls", "help", self.name] or lowered == ["please", "help", self.name]:
-      await self.help(message)
-    if lowered[0] == "pls" or lowered[0] == "please":
-      show_error = components[0] == "please"
-      components = components[1:]
-      for section in self.sections:
-        for regex, _, _, process, case_sensitive in self.commands[section]:
-          if not regex: continue
-          infinite = False
-          if regex[-1] == "+":
-            if len(components) < len(regex):
+    try:
+      if message.guild:
+        key = (message.guild.id, message.author.id)
+        if key in default("ignore", {}) and (data()["ignore"][key] == -1 or data()["ignore"][key] > time.time()):
+          return
+      if message.mention_everyone:
+        emojimap = emojis(message.guild)
+        if "ping" in emojimap:
+          await message.add_reaction(emojimap["ping"])
+      components = shlex.split(message.content)
+      if not components: return
+      lowered = list(map(str.lower, components))
+      if lowered == ["pls", "help", self.name] or lowered == ["please", "help", self.name]:
+        await self.help(message)
+      if lowered[0] == "pls" or lowered[0] == "please":
+        show_error = components[0] == "please"
+        components = components[1:]
+        for section in self.sections:
+          for regex, _, _, process, case_sensitive in self.commands[section]:
+            if not regex: continue
+            infinite = False
+            if regex[-1] == "+":
+              if len(components) < len(regex):
+                continue
+              patterns = regex[:-1]
+              infinite = True
+            elif regex[-1] == "*":
+              patterns = regex[:-1]
+              infinite = True
+            else:
+              patterns = regex[:]
+            opts = 0
+            while patterns[-1] == "?":
+              patterns.pop()
+              opts += 1
+            if len(components) < len(patterns) or not infinite and len(components) > len(patterns) + opts:
               continue
-            patterns = regex[:-1]
-            infinite = True
-          elif regex[-1] == "*":
-            patterns = regex[:-1]
-            infinite = True
-          else:
-            patterns = regex[:]
-          opts = 0
-          while patterns[-1] == "?":
-            patterns.pop()
-            opts += 1
-          if len(components) < len(patterns) or not infinite and len(components) > len(patterns) + opts:
-            continue
-          for component, pattern in zip(components, patterns):
-            try:
-              if type(pattern) == str:
-                if re.match("^{pattern}$".format(pattern = pattern if case_sensitive else pattern.lower()), component if case_sensitive else component.lower()) is None:
-                  break
-              else:
-                if not pattern(component):
-                  break
-            except:
-              log("Failed to parse pattern '{pattern}'".format(pattern = pattern), "ERROR")
+            for component, pattern in zip(components, patterns):
+              try:
+                if type(pattern) == str:
+                  if re.match("^{pattern}$".format(pattern = pattern if case_sensitive else pattern.lower()), component if case_sensitive else component.lower()) is None:
+                    break
+                else:
+                  if not pattern(component):
+                    break
+              except:
+                log("Failed to parse pattern '{pattern}'".format(pattern = pattern), "ERROR")
+                break
+            else:
+              try:
+                await process(components, message)
+              except BotError as e:
+                await send(message, e.msg, reaction = "x")
+              except Exception as e:
+                if show_error:
+                  await send(message, traceback.format_exc(), reaction = "!")
               break
           else:
-            try:
-              await process(components, message)
-            except BotError as e:
-              await send(message, e.msg, reaction = "x")
-            except Exception as e:
-              if show_error:
-                await send(message, traceback.format_exc(), reaction = "!")
-            break
-        else:
-          continue
-        break
-    await self.process(message)
+            continue
+          break
+      await self.process(message)
+    except:
+      pass

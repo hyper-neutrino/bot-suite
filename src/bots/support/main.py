@@ -1,30 +1,14 @@
 import base64, discord, requests
 
-from utils.datautils import config
+from utils.datautils import config, data, default, save_data
 from utils.discordbot import BotClient, send, get_member, get_role, get_color, english_list
 
-data = None
 client = None
-
-def alert(string):
-  try:
-    requests.get("http://127.0.0.1:5995/?bot=support&value=" + base64.b64encode(bytes(string, "utf-8")).decode("utf-8"))
-  except:
-    pass
 
 class SupportClient(BotClient):
   def __init__(self):
     BotClient.__init__(self)
     self.name = "support"
-
-  async def on_ready(self):
-    alert("READY")
-  
-  async def on_connect(self):
-    alert("CONNECT")
-  
-  async def on_disconnect(self):
-    alert("DISCONNECT")
 
 client = SupportClient()
 
@@ -80,7 +64,36 @@ async def command_role_color(command, message):
 @client.command("Role Commands", ["role", "rename", ".+", ".+"], "role rename <role> <name>", "rename a role")
 async def command_role_rename(command, message):
   await get_role(message.guild, command[2]).edit(name = command[3])
-  await send(message, "Renamed '{role}' to '{name}'!".format(role = command[2], name = command[3]))
+  await send(message, "Renamed '{role}' to '{name}'!".format(role = command[2], name = command[3]), reaction = "check")
+
+@client.command("User Utility Commands", ["alias", ".+", "?"], "alias <name> [user = none]", "alias a string to a user")
+async def command_alias(command, message):
+  existing = default("aliases", {}).get((message.guild.id, command[1].lower()))
+  if existing:
+    prev = await message.guild.fetch_member(existing)
+  else:
+    prev = None
+  
+  if len(command) > 2:
+    member = await get_member(message.guild, command[2], message.author)
+    data()["aliases"][(message.guild.id, command[1].lower())] = member.id
+    save_data()
+    await send(message, "Aliased '{alias}' to {user}{prev}!".format(
+      alias = command[1].lower(),
+      user = member.display_name,
+      prev = " (previously {name})".format(name = prev.display_name) if prev else ""
+    ), reaction = "check")
+  elif existing:
+    del data()["aliases"][(message.guild.id, command[1].lower())]
+    save_data()
+    await send(message, "Unaliased '{alias}' from {user}!".format(
+      alias = command[1].lower(),
+      user = prev.display_name
+    ), reaction = "check")
+  else:
+    await send(message, "'{alias}' is not aliased to any user!".format(
+      alias = command[1].lower()
+    ), reaction = "check")
 
 def start():
   client.run(config["discord-tokens"]["support"])

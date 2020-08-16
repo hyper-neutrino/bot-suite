@@ -44,11 +44,11 @@ async def anagram_function(channel, message = None, answer = None, start = False
         bonus = 0
         if time.time() - anagram_puzzle_ts.get(channel.id, 0) <= 5:
           bonus = int(math.floor(points * 0.5))
-        if message.author.id not in data["guilds"][message.guild.id]["puzzlepoints"]:
-          data["guilds"][message.guild.id]["puzzlepoints"][message.author.id] = {}
-        if "anagram" not in data["guilds"][message.guild.id]["puzzlepoints"][message.author.id]:
-          data["guilds"][message.guild.id]["puzzlepoints"][message.author.id]["anagram"] = 0
-        data["guilds"][message.guild.id]["puzzlepoints"][message.author.id]["anagram"] += points
+        if message.author.id not in data()["guilds"][message.guild.id]["puzzlepoints"]:
+          data()["guilds"][message.guild.id]["puzzlepoints"][message.author.id] = {}
+        if "anagram" not in data()["guilds"][message.guild.id]["puzzlepoints"][message.author.id]:
+          data()["guilds"][message.guild.id]["puzzlepoints"][message.author.id]["anagram"] = 0
+        data()["guilds"][message.guild.id]["puzzlepoints"][message.author.id]["anagram"] += points
         await reply(message, "Congratulations to " + message.author.mention + " for winning the anagram puzzle! (+%d%s)" % (points, " **+%d**" % bonus if bonus else ""))
         await message.add_reaction("✅")
         last_anagram_answer[channel.id] = anagram_puzzle[channel.id]
@@ -181,8 +181,8 @@ async def get_member(guild, string, caller = None, die = False):
           return member
     elif string.lower() == "me" or string.lower() == "myself":
       return caller or "caller"
-  if string.lower() in data["guilds"][guild.id]["aliases"]:
-    return await guild.fetch_member(data["guilds"][guild.id]["aliases"][string.lower()])
+  if string.lower() in data()["guilds"][guild.id]["aliases"]:
+    return await guild.fetch_member(data()["guilds"][guild.id]["aliases"][string.lower()])
   if die:
     raise RSError("Found no users with that identity; please check your spelling.")
   return "no-match"
@@ -242,8 +242,8 @@ def get_or_self(d, v, f = None):
 
 async def reply(message, *args, **kwargs):
   result = await message.channel.send(*args, **kwargs)
-  data["triggers"][result.id] = message.id
-  data["command_messages"][message.id] = result.id
+  data()["triggers"][result.id] = message.id
+  data()["command_messages"][message.id] = result.id
   save_data()
   return result
 
@@ -425,12 +425,12 @@ async def run_freerotation():
 #   print("Checking Free Rotation...")
   try:
     rotation = requests.get("https://" + lol_region + ".api.riotgames.com/lol/platform/v3/champion-rotations?api_key=" + config["riot_api_key"]).json()["freeChampionIds"]
-    if rotation != data["lolrotation"]:
-      data["lolrotation"] = rotation
+    if rotation != data()["lolrotation"]:
+      data()["lolrotation"] = rotation
       print("(New Rotation: %s)" % english_list(champs[x] for x in rotation))
       save_data()
-      for gid in data["guilds"]:
-        for cid in data["guilds"][gid]["lolrotationwatch"]:
+      for gid in data()["guilds"]:
+        for cid in data()["guilds"][gid]["lolrotationwatch"]:
           channel = guilds_by_id[gid].get_channel(cid)
           await channel.send("New Free Rotation: " + english_list(champs[x] for x in rotation))
     else:
@@ -480,28 +480,28 @@ class RSClient(discord.Client):
   async def on_guild_join(self, guild):
     global guilds_by_id
     guilds_by_id[guild.id] = guild
-    if guild.id not in data["guilds"]:
-      data["guilds"][guild.id] = {"members": {}, "aliases": {}, "leaguewatch": {}, "lolrotationwatch": set()}
+    if guild.id not in data()["guilds"]:
+      data()["guilds"][guild.id] = {"members": {}, "aliases": {}, "leaguewatch": {}, "lolrotationwatch": set()}
     save_data()
   
   async def on_member_join(self, member):
-    if member.id in data["guilds"][member.guild.id]["members"] and "roles" in data["guilds"][member.guild.id]["members"][member.id]:
-      roles = [member.guild.get_role(rid) for rid in data["guilds"][member.guild.id]["members"][member.id]["roles"]]
+    if member.id in data()["guilds"][member.guild.id]["members"] and "roles" in data()["guilds"][member.guild.id]["members"][member.id]:
+      roles = [member.guild.get_role(rid) for rid in data()["guilds"][member.guild.id]["members"][member.id]["roles"]]
       await member.edit(roles = [role for role in roles if role])
       await member.create_dm()
       await member.dm_channel.send("Welcome back to " + member.guild.name + "! Your roles were restored.")
   
   async def on_member_remove(self, member):
-    if member.id not in data["guilds"][member.guild.id]["members"]:
-      data["guilds"][member.guild.id]["members"][member.id] = {}
-    data["guilds"][member.guild.id]["members"][member.id]["roles"] = [role.id for role in member.roles]
+    if member.id not in data()["guilds"][member.guild.id]["members"]:
+      data()["guilds"][member.guild.id]["members"][member.id] = {}
+    data()["guilds"][member.guild.id]["members"][member.id]["roles"] = [role.id for role in member.roles]
   
   async def on_message(self, message):
     global connection
     if message.mention_everyone and "ping" in emojis[message.guild.id]:
       await message.add_reaction(emojis[message.guild.id]["ping"])
     print("Received: " + repr(message.content))
-    itime = data["guilds"][message.guild.id]["members"].get(message.author.id, {}).get("ignore", 0)
+    itime = data()["guilds"][message.guild.id]["members"].get(message.author.id, {}).get("ignore", 0)
     if message.author.id not in config["sudo"] and (itime == -1 or itime > time.time()):
       return
     try:
@@ -705,8 +705,8 @@ class RSClient(discord.Client):
           elif command[2].lower() == "leaderboard":
             leaderboard = []
             async for member in message.guild.fetch_members(limit = None):
-              if member.id in data["guilds"][message.guild.id]["puzzlepoints"] and "anagram" in data["guilds"][message.guild.id]["puzzlepoints"][member.id]:
-                leaderboard.append((data["guilds"][message.guild.id]["puzzlepoints"][member.id]["anagram"], member))
+              if member.id in data()["guilds"][message.guild.id]["puzzlepoints"] and "anagram" in data()["guilds"][message.guild.id]["puzzlepoints"][member.id]:
+                leaderboard.append((data()["guilds"][message.guild.id]["puzzlepoints"][member.id]["anagram"], member))
             leaderboard.sort(reverse = True)
             await reply(message, embed = discord.Embed(
               title = "Anagram Leaderboard",
@@ -839,9 +839,9 @@ class RSClient(discord.Client):
               await reply(message, "You cannot bonk yourself (you would not be able to unbonk yourself).")
               await message.add_reaction("❌")
             else:
-              if member.id not in data["guilds"][message.guild.id]["members"]:
-                data["guilds"][message.guild.id]["members"][member.id] = {}
-              data["guilds"][message.guild.id]["members"][member.id]["ignore"] = int(time.time()) + int(command[3]) if len(command) > 3 else -1
+              if member.id not in data()["guilds"][message.guild.id]["members"]:
+                data()["guilds"][message.guild.id]["members"][member.id] = {}
+              data()["guilds"][message.guild.id]["members"][member.id]["ignore"] = int(time.time()) + int(command[3]) if len(command) > 3 else -1
               if len(command) > 3:
                 await reply(message, "Bonk! " + member.mention + " is being ignored for " + command[3] + " seconds.")
               else:
@@ -853,29 +853,29 @@ class RSClient(discord.Client):
             await message.add_reaction("❌")
           else:
             member = await get_member(message.guild, command[2], message.author, True)
-            if member.id not in data["guilds"][message.guild.id]["members"]:
-              data["guilds"][message.guild.id]["members"][member.id] = {}
-            data["guilds"][message.guild.id]["members"][member.id]["ignore"] = 0
+            if member.id not in data()["guilds"][message.guild.id]["members"]:
+              data()["guilds"][message.guild.id]["members"][member.id] = {}
+            data()["guilds"][message.guild.id]["members"][member.id]["ignore"] = 0
             save_data()
             await reply(message, member.mention + " is no longer being ignored.")
             await message.add_reaction("✅")
         elif command[1].lower() == "lol" or command[1].lower() == "leg" or command[1].lower() == "league":
           if command[2].lower() == "report" or command[2].lower() == "report-game" or command[2].lower() == "report-teams" or command[2].lower() == "report-player": # change to elif
             if len(command) <= 3:
-              if message.author.id not in data["summoner_by_id"]:
+              if message.author.id not in data()["summoner_by_id"]:
                 await reply(message, "You are not linked; use `pls lol link <user> <summoner>` to self-call the report command.")
                 await message.add_reaction("❌")
                 summs = None
               else:
-                summs = [data["summoner_by_id"][message.author.id]]
+                summs = [data()["summoner_by_id"][message.author.id]]
             else:
               summs = []
               for substr in command[3].split("+"):
                 member = await get_member(message.guild, substr, message.author, False)
-                if type(member) == str or member.id not in data["summoner_by_id"]:
+                if type(member) == str or member.id not in data()["summoner_by_id"]:
                   summs.append(substr)
                 else:
-                  summs.append(data["summoner_by_id"][member.id])
+                  summs.append(data()["summoner_by_id"][member.id])
             if summs:
               print("Beginning report...")
               fail = False
@@ -925,38 +925,38 @@ class RSClient(discord.Client):
               await reply(message, "Could not find current game for '" + command[3].split("+")[0] + "' (region " + lol_region.upper() + "). Check your spelling, or the summoner may not be in game.")
               await message.add_reaction("❌")
           elif command[2].lower() == "watchrotation":
-            data["guilds"][message.guild.id]["lolrotationwatch"].add(message.channel.id)
+            data()["guilds"][message.guild.id]["lolrotationwatch"].add(message.channel.id)
             save_data()
             await reply(message, "Now watching free rotation in this channel.")
             await message.add_reaction("✅")
           elif command[2].lower() == "unwatchrotation":
-            data["guilds"][message.guild.id]["lolrotationwatch"] -= {message.channel.id}
+            data()["guilds"][message.guild.id]["lolrotationwatch"] -= {message.channel.id}
             save_data()
             await reply(message, "No longer watching free rotation in this channel.")
             await message.add_reaction("✅")
           elif command[2].lower() == "link":
             member = await get_member(message.guild, command[3], message.author, True)
-            data["summoner_by_id"][member.id] = command[4]
-            data["id_by_summoner"][command[4]] = member.id
+            data()["summoner_by_id"][member.id] = command[4]
+            data()["id_by_summoner"][command[4]] = member.id
             save_data()
             await reply(message, "Linked " + member.display_name + " to " + lol_region.upper() + "/" + command[4] + ".")
             await message.add_reaction("✅")
           elif command[2].lower() == "unlink":
             member = await get_member(message.guild, command[3], message.author, True)
-            del data["id_by_summoner"][data["summoner_by_id"][member.id]]
-            del data["summoner_by_id"][member.id]
+            del data()["id_by_summoner"][data()["summoner_by_id"][member.id]]
+            del data()["summoner_by_id"][member.id]
             save_data()
             await reply(message, "Unlinked " + member.display_name + ".")
             await message.add_reaction("✅")
         elif command[1].lower() == "clean":
           async with message.channel.typing():
             limit = (None if command[2].lower() == "all" else int(command[2])) if len(command) > 2 else 100
-            deleted = await message.channel.purge(limit = limit, check = lambda m: m.id in data["triggers"] or m.id in data["command_messages"] or m.author == message.guild.me)
+            deleted = await message.channel.purge(limit = limit, check = lambda m: m.id in data()["triggers"] or m.id in data()["command_messages"] or m.author == message.guild.me)
             for m in deleted:
-              if m.id in data["triggers"]:
-                del data["triggers"][m.id]
-              if m.id in data["command_messages"]:
-                del data["command_messages"][m.id]
+              if m.id in data()["triggers"]:
+                del data()["triggers"][m.id]
+              if m.id in data()["command_messages"]:
+                del data()["command_messages"][m.id]
             response = await reply(message, "Deleted " + str(len(deleted)) + " message" + ("" if len(deleted) == 1 else "s") + ".")
             await message.add_reaction("✅")
             await message.delete(delay = 3)
@@ -964,15 +964,15 @@ class RSClient(discord.Client):
         elif command[1].lower() == "alias":
           string = command[2].lower()
           if len(command) > 3:
-            old = data["guilds"][message.guild.id]["aliases"].get(string, None)
+            old = data()["guilds"][message.guild.id]["aliases"].get(string, None)
             if old: old = await message.guild.fetch_member(old)
             member = await get_member(message.guild, command[3], message.author, True)
-            data["guilds"][message.guild.id]["aliases"][string] = member.id
+            data()["guilds"][message.guild.id]["aliases"][string] = member.id
             await reply(message, "Aliased '" + string + "' to " + member.display_name + "%s." % (" (Previously " + old.display_name + ")" if old else ""))
           else:
-            if string in data["guilds"][message.guild.id]["aliases"]:
-              member = await message.guild.fetch_member(data["guilds"][message.guild.id]["aliases"][string])
-              del data["guilds"][message.guild.id]["aliases"][string]
+            if string in data()["guilds"][message.guild.id]["aliases"]:
+              member = await message.guild.fetch_member(data()["guilds"][message.guild.id]["aliases"][string])
+              del data()["guilds"][message.guild.id]["aliases"][string]
               await reply(message, "Unaliased '" + string + "' from " + member.display_name + ".")
             else:
               await reply(message, "('" + string + "' was not aliased; no changes made.)")
