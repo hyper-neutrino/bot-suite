@@ -1,6 +1,6 @@
 import base64, discord, requests
 
-from utils.datautils import config, data, default, save_data
+from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send, get_member, get_role, get_color, english_list
 
 client = None
@@ -94,6 +94,8 @@ async def command_alias(command, message):
     await send(message, "'{alias}' is not aliased to any user!".format(
       alias = command[1].lower()
     ), reaction = "check")
+
+set_client(client)
 
 def start():
   client.run(config["discord-tokens"]["support"])

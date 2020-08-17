@@ -1,6 +1,6 @@
 import asyncio, base64, discord, math, praw, random, re, requests, time
 
-from utils.datautils import config, data, default, save_data
+from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send
 
 client = None
@@ -83,11 +83,12 @@ async def anagram_function(message, answer = None, stop = False, start = False):
         scrambled = "".join(cl)
         data()["anagrams"][message.channel.id] = (answer, scrambled, 0, time.time())
         save_data()
-        await send(message, "Anagram puzzle! Solve for: '{scrambled}'.".format(scrambled = scrambled))
+        await send(message, "Anagram puzzle! Solve for: '{scrambled}' ({length}).".format(scrambled = scrambled, length = len(scrambled)))
       else:
         actual, scrambled, hint, _ = data()["anagrams"][message.channel.id]
-        await send(message, "An anagram puzzle is already running! Solve for: '{display}'.".format(
-          display = display(actual, scrambled, hint)
+        await send(message, "An anagram puzzle is already running! Solve for: '{display}' ({length}).".format(
+          display = display(actual, scrambled, hint),
+          length = len(actual)
         ), reaction = "x")
     save_data()
 
@@ -138,10 +139,11 @@ async def command_anagram_stop(command, message):
     if hint * 2 >= len(answer) - 1:
       await anagram_function(message, stop = True)
     else:
-      await send(message, "Hint: the current puzzle starts with '{start}' and ends with '{end}' ('{display}').".format(
+      await send(message, "Hint: the current puzzle starts with '{start}' and ends with '{end}' ('{display}' ({length})).".format(
         start = answer[:hint],
         end = answer[-hint:],
-        display = display(answer, scrambled, hint)
+        display = display(answer, scrambled, hint),
+        length = len(answer)
       ), reaction = "check")
       data()["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
       save_data()
@@ -196,26 +198,31 @@ async def command_anagram_leaderboard(command, message):
     description = "\n".join("{mention} - {score}".format(mention = member.mention, score = score) for score, member in scores) or "The leaderboard is empty!"
   ), reaction = "check")
 
-@client.command("Reddit Commands", ["mem"], "mem", "alias for `meme`")
-@client.command("Reddit Commands", ["meme"], "meme", "fetch a random meme from /r/memes")
-async def command_anagram_meme(command, message):
-  while True:
-    meme = reddit.subreddit("memes").random()
-    if message.channel.is_nsfw() or not meme.over_18:
-      break
-  await send(message, meme.url, reaction = "check")
-
 @client.command("Reddit Commands", ["ket"], "ket", "alias for `cat`")
 @client.command("Reddit Commands", ["cat"], "cat", "fetch a random cat image from /r/cat")
+@client.command("Reddit Commands", ["mem"], "mem", "alias for `meme`")
+@client.command("Reddit Commands", ["meme"], "meme", "fetch a random meme from /r/memes")
 async def command_anagram_cat(command, message):
   if command[0] == "ket" and random.random() < 0.01:
     await send(message, "{mention} overdosed on ketamine and died.".format(mention = message.author.mention), reaction = "x")
   else:
     while True:
-      cat = reddit.subreddit("cat").random()
-      if message.channel.is_nsfw() or not cat.over_18:
+      item = reddit.subreddit("cat" if command[0] == "ket" or command[0] == "cat" else "memes").random()
+      if message.channel.is_nsfw() or not item.over_18:
         break
-    await send(message, cat.url, reaction = "check")
+    await send(message, item.url, reaction = "check")
+
+@client.command("Reddit Commands", ["jonk"], "jonk", "alias for `jonk`")
+@client.command("Reddit Commands", ["joke"], "joke", "fetch a random joke from /r/jokes")
+async def command_anagram_cat(command, message):
+  while True:
+    item = reddit.subreddit("jokes").random()
+    if message.channel.is_nsfw() or not item.over_18:
+      break
+  await send(message, "**{title}**\n{body}".format(
+    title = item.title,
+    body = item.selftext
+  ), reaction = "check")
 
 @client.command("Miscellaneous Commands", ["roll", "?"], "roll [config: xdy+xdy-xdy+...+n default 1d6]", "roll a die / dice (`<x>d<y>` to roll `x` `y`-sided dice)")
 async def command_roll(command, message):
@@ -302,6 +309,8 @@ async def command_disconnect(command, message):
     await send(message, "Disconnected!", reaction = "check")
   else:
     await send(message, "I am not connected to any voice channels!", reaction = "x")
+
+set_client(client)
 
 def start():
   client.run(config["discord-tokens"]["toplane"])

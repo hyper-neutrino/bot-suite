@@ -256,9 +256,48 @@ def lol_current_embed(guild, game, names):
       value = "```%s```" % traceback.format_exc()[:1000]
     )
 
-# emojis(guild).get(runes[participant["perks"]["perkIds"][0]]["name"].lower().replace(" ", "_"), ""),
-# *[runes[participant["perks"]["perkIds"][i]]["name"] for i in range(4)],
-# emojis(guild).get(runes[participant["perks"]["perkSubStyle"]]["name"].lower().replace(" ", "_"), ""),
-# runes[participant["perks"]["perkSubStyle"]]["name"],
-# *[runes[participant["perks"]["perkIds"][i]]["name"] for i in range(4, 6)],
-# *[shard_name[participant["perks"]["perkIds"][i]] for i in range(6, 9)]
+def lol_current_player_embed(guild, game, names):
+  try:
+    print("Generating league embed (current)...")
+    dmin, dsec = divmod(game["gameLength"] + 180, 60)
+    timedisplay = str(dmin) + ":" + str(dsec).zfill(2)
+    embed = discord.Embed(
+      title = "Game Report (" + ("%s - %s" % queues.get(game["gameQueueConfigId"], ("Unknown Map", "Unknown Gamemode"))) + ")",
+      color = 0x3333AA
+    ).add_field(
+      name = "Game Data",
+      value = "Patch " + ".".join(lol_version.split(".")[:2]) + "\n"
+        + datetime.datetime.fromtimestamp(game["gameStartTime"] / 1000).strftime("%B %d, %Y at %H:%M") + "\n"
+        + "Game Duration: " + timedisplay + "\n",
+      inline = False
+    )
+    for name in names:
+      for participant in game["participants"]:
+        if participant["summonerName"].lower() == name.lower():
+          embed.add_field(
+            name = "%s (%s)" % (champs.get(participant["championId"], "Unknown Champion"), name),
+            value = "%s__%s__ | %s + %s + %s\n%s%s | %s + %s | %s/%s/%s\n%s + %s" % (
+              emojis(guild).get(runes[participant["perks"]["perkIds"][0]]["name"].lower().replace(" ", "_"), ""),
+              *[runes[participant["perks"]["perkIds"][i]]["name"] for i in range(4)],
+              emojis(guild).get(runes[participant["perks"]["perkSubStyle"]]["name"].lower().replace(" ", "_"), ""),
+              runes[participant["perks"]["perkSubStyle"]]["name"],
+              *[runes[participant["perks"]["perkIds"][i]]["name"] for i in range(4, 6)],
+              *[shard_name[participant["perks"]["perkIds"][i]] for i in range(6, 9)],
+              get_or_self(emojis(guild), summoner_spells[str(participant["spell1Id"])].lower()),
+              get_or_self(emojis(guild), summoner_spells[str(participant["spell2Id"])].lower())
+            ),
+            inline = False
+          )
+          break
+    print("Done!")
+    return embed
+  except:
+    print("Errored!")
+    print(traceback.format_exc())
+    return discord.Embed(
+      title = "Error",
+      color = 0xFF5555
+    ).add_field(
+      name = "Error while constructing embed: league embed (game)",
+      value = "```%s```" % traceback.format_exc()[:1000]
+    )

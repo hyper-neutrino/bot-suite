@@ -1,10 +1,10 @@
-import base64, discord, requests
+import base64, discord, requests, traceback
 
-from utils.datautils import config, data, default, save_data
+from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send, get_member
 
 from utils.lol.api import lol_region, watcher
-from utils.lol.utils import lol_current_embed, lol_game_embed, lol_player_embed
+from utils.lol.utils import lol_current_embed, lol_current_player_embed, lol_game_embed, lol_player_embed
 
 client = None
 
@@ -68,23 +68,22 @@ async def command_lol_report(command, message):
         print(traceback.format_exc())
         fail = True
       if not fail and len(games) > index:
-        if command[1].lower() == "report":
-          try:
+        try:
+          if command[1].lower() == "report":
             await send(message, embed = lol_game_embed(message.guild, games[index]["gameId"], summs, False), reaction = "check")
-          except:
-            await send(message, "Failed to create embed!", reaction = "x")
-        elif command[1].lower() == "report-player":
-          try:
+          elif command[1].lower() == "report-player":
             await send(message, embed = lol_player_embed(message.guild, games[index]["gameId"], summs[0], False), reaction = "check")
-          except:
-            await send(message, "Failed to create embed!", reaction = "x")
+        except:
+          print(traceback.format_exc())
+          await send(message, "Failed to create embed!", reaction = "x")
       else:
         await send(message, "Could not find a game for {region}/{summoner} or summoner does not exist. Check your spelling; alternatively, this user has not played any games / enough games".format(
           region = lol_region.upper(),
           summoner = summs[0]
         ), reaction = "x")
 
-@client.command("League Commands", ["lol", "current", "?"], "lol current [summoner = me]", "generate a report for a player's current league of legends game")
+@client.command("League Commands", ["lol", "current-player", "?"], "lol current-player [summoner = me + friend + ...]", "generate a detailed report for a player / players for the first player's current league of legends game")
+@client.command("League Commands", ["lol", "current", "?"], "lol current [summoner = me + friend + ...]", "generate a report for a player's current league of legends game")
 async def command_lol_current(command, message):
   if len(command) <= 2:
     if message.author.id not in default("lol_links", {}):
@@ -103,13 +102,14 @@ async def command_lol_current(command, message):
   try:
     game = watcher.spectator.by_summoner(lol_region, watcher.summoner.by_name(lol_region, summs[0])["id"])
     try:
-      await send(message, embed = lol_current_embed(message.guild, game, summs), reaction = "check")
+      if command[1] == "current":
+        await send(message, embed = lol_current_embed(message.guild, game, summs), reaction = "check")
+      elif command[1] == "current-player":
+        await send(message, embed = lol_current_player_embed(message.guild, game, summs), reaction = "check")
     except:
-      import traceback
       print(traceback.format_exc())
       await send(message, "Failed to create embed!", reaction = "x")
   except Exception as e:
-    import traceback
     print(traceback.format_exc())
     await send(message, "Could not find current game for {region}/{summoner} or summoner does not exist! Check your spelling, or the summoner may not be in game.".format(
       region = lol_region.upper(),
@@ -144,6 +144,8 @@ async def command_lol_unlink(command, message):
     ), reaction = "check")
   else:
     await send(message, "{name} is not linked!".format(name = member.display_name), reaction = "x")
+
+set_client(client)
 
 def start():
   client.run(config["discord-tokens"]["jungler"])

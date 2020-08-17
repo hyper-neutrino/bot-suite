@@ -2,7 +2,7 @@ import datetime, discord, time
 
 from .botmanager import start, stop, aliases, titles
 
-from utils.datautils import config, data, save_data, default
+from utils.datautils import config, data, save_data, default, set_client
 from utils.discordbot import BotClient, send, get_member
 
 client = None
@@ -134,3 +134,5 @@ async def command_unignore(command, message):
       await send(message, "{mention} is no longer being ignored!".format(mention = member.mention))
     else:
       await send(message, "{name} is not currently ignored!".format(name = member.display_name))
+
+set_client(client)
