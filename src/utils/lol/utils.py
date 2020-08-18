@@ -23,11 +23,11 @@ def find_position(role, lane):
 async def get_summoner(guild, string, caller):
   try:
     member = await get_member(guild, string, caller)
-    return default("lol_links", {}).get(member.id, string)
+    return (await default("lol_links", {})).get(member.id, string)
   except:
     return string
 
-def lol_game_embed(guild, game, names = [], skip_remake = False):
+async def lol_game_embed(guild, game, names = [], skip_remake = False):
   try:
     print("Generating league embed (game)...")
     names = list(map(str.lower, names))
@@ -82,10 +82,11 @@ def lol_game_embed(guild, game, names = [], skip_remake = False):
         + "Game Duration: " + timedisplay + "\n",
       inline = False
     )
+    othernames = {(await default("lol_links", {})).get(member.id, "").lower() for member in (guild.members if guild else [])}
     for i in [0, 1]:
       embed.add_field(
         name = "Team %s - " % (i + 1) + ("Victory" if vicleft ^ bool(i) else "Defeat"),
-        value = "/".join(str(sum(participant["stats"][stat] for participant in plists[i])) for stat in ["kills", "deaths", "assists"]) + " - " + str(gold[i]) + " G" + "\n" + "%s " * 10 % sum([(teams[i][x], get_or_self(emojis(guild), y)) for x, y in [("towerKills", "turret"), ("inhibitorKills", "inhibitor"), ("baronKills", "baron_nashor"), ("dragonKills", "drake"), ("riftHeraldKills", "rift_herald")]], ()) + "\n\n" + ("**Bans**\n" + "\n".join(champs.get(ban["championId"], "No Ban") for ban in teams[i]["bans"]) + "\n\n" if teams[i].get("bans") else "") + "**Players**\n" + "\n\n".join(("%s (" + ("**%s**" if player[1].lower() in set(names) | {default("lol_links", {}).get(member.id, "").lower() for member in guild.members} else "%s") + ")\n%s - %s CS - %s G") % tuple(player) for player in players[i * 5:i * 5 + 5])
+        value = "/".join(str(sum(participant["stats"][stat] for participant in plists[i])) for stat in ["kills", "deaths", "assists"]) + " - " + str(gold[i]) + " G" + "\n" + "%s " * 10 % sum([(teams[i][x], get_or_self(emojis(guild), y)) for x, y in [("towerKills", "turret"), ("inhibitorKills", "inhibitor"), ("baronKills", "baron_nashor"), ("dragonKills", "drake"), ("riftHeraldKills", "rift_herald")]], ()) + "\n\n" + ("**Bans**\n" + "\n".join(champs.get(ban["championId"], "No Ban") for ban in teams[i]["bans"]) + "\n\n" if teams[i].get("bans") else "") + "**Players**\n" + "\n\n".join(("%s (" + ("**%s**" if player[1].lower() in set(names) | othernames else "%s") + ")\n%s - %s CS - %s " + str(emojis(guild).get("gold", "G"))) % tuple(player) for player in players[i * 5:i * 5 + 5])
       )
     print("Done!")
     return embed
@@ -100,7 +101,7 @@ def lol_game_embed(guild, game, names = [], skip_remake = False):
       value = "```%s```" % traceback.format_exc()[:1000]
     )
 
-def lol_player_embed(guild, game, name, skip_remake = False):
+async def lol_player_embed(guild, game, name, skip_remake = False):
   try:
     print("Generating league embed (player)...")
     details = watcher.match.by_id(lol_region, game)
@@ -147,13 +148,14 @@ def lol_player_embed(guild, game, name, skip_remake = False):
       inline = False
     ).add_field(
       name = "Performance",
-      value = "%s/%s/%s - %s CS (%.1f / min) - %s G - %s%% KP\nVision: %s (Control Wards: %s; Wards Placed: %s; Wards Destroyed: %s)\nCC Score: %s\nKilling Sprees: %s (Largest: %s)\nMultikills: %s × Double, %s × Triple, %s × Quadra, %s × Penta\nLongest time alive: %s:%s" % (
+      value = "%s/%s/%s - %s CS (%.1f / min) - %s %s - %s%% KP\nVision: %s (Control Wards: %s; Wards Placed: %s; Wards Destroyed: %s)\nCC Score: %s\nKilling Sprees: %s (Largest: %s)\nMultikills: %s × Double, %s × Triple, %s × Quadra, %s × Penta\nLongest time alive: %s:%s" % (
         stats["kills"],
         stats["deaths"],
         stats["assists"],
         CS,
         CS / details["gameDuration"] * 60,
         stats["goldEarned"],
+        emojis(guild).get("gold", "G"),
         int((stats["kills"] + stats["assists"]) * 100 / (sumstat("kills") or 1)),
         stats["visionScore"],
         stats["visionWardsBoughtInGame"],
@@ -205,7 +207,7 @@ def lol_player_embed(guild, game, name, skip_remake = False):
       value = "```%s```" % traceback.format_exc()[:1000]
     )
 
-def lol_current_embed(guild, game, names):
+async def lol_current_embed(guild, game, names):
   try:
     print("Generating league embed (current)...")
     names = list(map(str.lower, names))
@@ -225,6 +227,7 @@ def lol_current_embed(guild, game, names):
         + "Game Duration: " + timedisplay + "\n",
       inline = False
     )
+    othernames = {(await default("lol_links", {})).get(member.id, "").lower() for member in (guild.members if guild else [])}
     for i, team in enumerate(teams):
       embed.add_field(
         name = "Team {team}".format(team = i + 1),
@@ -234,7 +237,7 @@ def lol_current_embed(guild, game, names):
         ) + "\n**Players**\n" + "\n\n".join(
           "%s (%s)\n%s %s | %s + %s" % (
             champs.get(participant["championId"], "Unknown Champion"),
-            (lambda name: "**" + name + "**" if name.lower() in set(names) | {default("lol_links", {}).get(member.id, "").lower() for member in guild.members} else name)(participant["summonerName"]),
+            (lambda name: "**" + name + "**" if name.lower() in set(names) | othernames else name)(participant["summonerName"]),
             emojis(guild).get(runes[participant["perks"]["perkIds"][0]]["name"].lower().replace(" ", "_"), ""),
             emojis(guild).get(runes[participant["perks"]["perkSubStyle"]]["name"].lower().replace(" ", "_"), ""),
             get_or_self(emojis(guild), summoner_spells[str(participant["spell1Id"])].lower()),
@@ -256,7 +259,7 @@ def lol_current_embed(guild, game, names):
       value = "```%s```" % traceback.format_exc()[:1000]
     )
 
-def lol_current_player_embed(guild, game, names):
+async def lol_current_player_embed(guild, game, names):
   try:
     print("Generating league embed (current)...")
     dmin, dsec = divmod(game["gameLength"] + 180, 60)

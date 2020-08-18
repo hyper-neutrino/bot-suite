@@ -31,7 +31,7 @@ def start(name):
     botname = aliases[name]
     if botname in bots:
       raise BotError("{title} is already running!".format(title = titles[botname]))
-    bots[botname] = subprocess.Popen(["python3", "src/main.py", botname])
+    bots[botname] = subprocess.Popen(["python3", "src/main.py", botname], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
     return "success"
   raise BotError("'{name}' is not a recognized bot name!".format(name = name))
 

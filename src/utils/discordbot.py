@@ -33,6 +33,8 @@ def english_list(items):
     return ", ".join(items[:-1]) + ", and " + items[-1]
 
 async def send(message, *args, **kwargs):
+  if "embed" in kwargs:
+    kwargs["embed"].set_footer(text = "Requested by {name}".format(name = message.author.display_name))
   reply = await message.channel.send(*args, **{a: kwargs[a] for a in kwargs if a != "reaction"})
   if "reaction" in kwargs:
     if type(kwargs["reaction"]) == list:
@@ -66,8 +68,8 @@ async def get_member(guild, string, caller = None):
         return member
   elif string.lower() == "me" or string.lower() == "myself":
     return caller
-  if (guild.id, string.lower()) in default("aliases", {}):
-    return await guild.fetch_member(data()["aliases"][(guild.id, string.lower())])
+  if (guild.id, string.lower()) in (await default("aliases", {})):
+    return await guild.fetch_member((await data())["aliases"][(guild.id, string.lower())])
   raise BotError("Found no users with that identity; please check your spelling.")
 
 def get_role(guild, string):
@@ -110,8 +112,13 @@ class BotClient(discord.Client):
     await (self.announce("Hello o/ I am now ready!"))
   
   async def announce(self, *args, **kwargs):
-    for gid, cid in default("statreports", set()):
-      await self.get_guild(gid).get_channel(cid).send(*args, **kwargs)
+    for gid, cid in (await default("statreports", set())):
+      print("Announcing to {gid}#{cid}".format(gid = gid, cid = cid))
+      try:
+        await self.get_guild(gid).get_channel(cid).send(*args, **kwargs)
+      except:
+        print("ERROR announcing")
+        print(traceback.format_exc())
   
   def command(self, section, regex, syntax, description, case_sensitive = False):
     if section not in self.sections:
@@ -149,7 +156,7 @@ class BotClient(discord.Client):
     try:
       if message.guild:
         key = (message.guild.id, message.author.id)
-        if key in default("ignore", {}) and (data()["ignore"][key] == -1 or data()["ignore"][key] > time.time()):
+        if key in (await default("ignore", {})) and ((await data())["ignore"][key] == -1 or (await data())["ignore"][key] > time.time()):
           return
       if message.mention_everyone:
         emojimap = emojis(message.guild)

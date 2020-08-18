@@ -17,7 +17,7 @@ def set_client(cl):
   global client
   client = cl
 
-def data():
+async def data():
   global data_cache, last_time
   mtime = os.stat("data.pickle").st_mtime
   if mtime > last_time or data_cache is None:
@@ -32,37 +32,36 @@ def data():
           data_cache = {}
   if data_cache is None:
     data_cache = {}
-    save_data()
+    await save_data()
   if not data_cache.get("working"):
-    client.announce("Data file error! Reloading from the backup.")
     with open("data-backup.pickle", "rb") as f:
       with open("data.pickle", "wb") as g:
         g.write(f.read())
-    return data()
+        await client.announce("Data contents are broken; retrieving from backup!")
+    return await data()
   return data_cache
 
 with open("config.json", "r") as f:
   config = json.load(f)
 
-def default(key, val, obj = None):
+async def default(key, val, obj = None):
   save = False
   if obj is None:
-    obj = data()
+    obj = await data()
     save = True
   if key not in obj:
     obj[key] = val
   if save:
-    save_data()
+    await save_data()
   return obj[key]
 
-def save_data():
-  with lock:
-    with open("data.pickle", "wb") as f:
-      pickle.dump(data_cache, f)
-    if data_cache.get("working"):
-      with open("data.pickle", "rb") as f:
-        with open("data-backup.pickle", "wb") as g:
-          g.write(f.read())
+async def save_data():
+  if data_cache.get("working"):
+    with lock:
+      with open("data.pickle", "wb") as f:
+        pickle.dump(data_cache, f)
+  else:
+    await client.announce("Data contents are broken; did not save!")
 
 def save_config():
   with open("config.json", "w") as f:

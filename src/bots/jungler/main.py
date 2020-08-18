@@ -23,17 +23,17 @@ async def command_test(command, message):
 @client.command("League Commands", ["lol", "report", "?", "?", "?"], "lol report [user = me + friend + ...] [index = last] [queue = all]", "generate a report for a league of legends game")
 async def command_lol_report(command, message):
   if len(command) <= 2:
-    if message.author.id not in default("lol_links", {}):
+    if message.author.id not in (await default("lol_links", {})):
       await send(message, "You are not linked; use `pls lol link [user = me] <summoner>` to self-call the report command.", reaction = "x")
       summs = None
     else:
-      summs = [data()["lol_links"][message.author.id]]
+      summs = [(await data())["lol_links"][message.author.id]]
   else:
     summs = []
     for substr in command[2].split("+"):
       try:
         member = await get_member(message.guild, substr, message.author)
-        summs.append(data()["lol_links"][member.id])
+        summs.append((await data())["lol_links"][member.id])
       except:
         summs.append(substr)
   if summs:
@@ -64,15 +64,14 @@ async def command_lol_report(command, message):
         print("Fetching games (index %d, queues %s)..." % (index, queuetypes))
         games = watcher.match.matchlist_by_account(lol_region, watcher.summoner.by_name(lol_region, summs[0])["accountId"], queue = queuetypes, end_index = index + 1)["matches"]
       except Exception as e:
-        import traceback
         print(traceback.format_exc())
         fail = True
       if not fail and len(games) > index:
         try:
           if command[1].lower() == "report":
-            await send(message, embed = lol_game_embed(message.guild, games[index]["gameId"], summs, False), reaction = "check")
+            await send(message, embed = await lol_game_embed(message.guild, games[index]["gameId"], summs, False), reaction = "check")
           elif command[1].lower() == "report-player":
-            await send(message, embed = lol_player_embed(message.guild, games[index]["gameId"], summs[0], False), reaction = "check")
+            await send(message, embed = await lol_player_embed(message.guild, games[index]["gameId"], summs[0], False), reaction = "check")
         except:
           print(traceback.format_exc())
           await send(message, "Failed to create embed!", reaction = "x")
@@ -86,26 +85,26 @@ async def command_lol_report(command, message):
 @client.command("League Commands", ["lol", "current", "?"], "lol current [summoner = me + friend + ...]", "generate a report for a player's current league of legends game")
 async def command_lol_current(command, message):
   if len(command) <= 2:
-    if message.author.id not in default("lol_links", {}):
+    if message.author.id not in (await default("lol_links", {})):
       await send(message, "You are not linked; use `pls lol link [user = me] <summoner>` to self-call the report command.", reaction = "x")
       summs = None
     else:
-      summs = [data()["lol_links"][message.author.id]]
+      summs = [(await data())["lol_links"][message.author.id]]
   else:
     summs = []
     for substr in command[2].split("+"):
       try:
         member = await get_member(message.guild, substr, message.author)
-        summs.append(data()["lol_links"][member.id])
+        summs.append((await data())["lol_links"][member.id])
       except:
         summs.append(substr)
   try:
     game = watcher.spectator.by_summoner(lol_region, watcher.summoner.by_name(lol_region, summs[0])["id"])
     try:
       if command[1] == "current":
-        await send(message, embed = lol_current_embed(message.guild, game, summs), reaction = "check")
+        await send(message, embed = await lol_current_embed(message.guild, game, summs), reaction = "check")
       elif command[1] == "current-player":
-        await send(message, embed = lol_current_player_embed(message.guild, game, summs), reaction = "check")
+        await send(message, embed = await lol_current_player_embed(message.guild, game, summs), reaction = "check")
     except:
       print(traceback.format_exc())
       await send(message, "Failed to create embed!", reaction = "x")
@@ -120,9 +119,9 @@ async def command_lol_current(command, message):
 async def command_lol_link(command, message):
   member = await get_member(message.guild, command[2], message.author) if len(command) > 3 else message.author
   summoner = command[3] if len(command) > 3 else command[2]
-  old = default("lol_links", {}).get(member.id)
-  data()["lol_links"][member.id] = summoner
-  save_data()
+  old = (await default("lol_links", {})).get(member.id)
+  (await data())["lol_links"][member.id] = summoner
+  await save_data()
   await send(message, "Linked {name} to {region}/{summoner}{prev}!".format(
     name = member.display_name,
     region = lol_region.upper(),
@@ -133,10 +132,10 @@ async def command_lol_link(command, message):
 @client.command("League Commands", ["lol", "unlink", "?"], "lol unlink [user = me]", "unlink a user from their league of legends summoner")
 async def command_lol_unlink(command, message):
   member = await get_member(message.guild, command[2], message.author) if len(command) > 2 else message.author
-  old = default("lol_links", {}).get(member.id)
+  old = (await default("lol_links", {})).get(member.id)
   if old:
-    del data()["lol_links"][member.id]
-    save_data()
+    del (await data())["lol_links"][member.id]
+    await save_data()
     await send(message, "Unlinked {name} from {region}/{summoner}!".format(
       name = member.display_name,
       region = lol_region.upper(),

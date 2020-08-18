@@ -12,6 +12,14 @@ class SummonerClient(BotClient):
     BotClient.__init__(self)
     self.name = "summoner"
 
+  async def process(self, message):
+    print("[{author} in {guild}#{channel}] {message}".format(
+      author = message.author.display_name,
+      guild = message.guild.name,
+      channel = message.channel.name,
+      message = message.content
+    ))
+
   async def on_ready(self):
     await (self.announce("Summoner is now online! Starting the other bots now."))
     
@@ -46,14 +54,14 @@ async def command_ping(command, message):
 
 @client.command("Bot Manager Commands", ["statwatch"], "statwatch", "watch bot status reports in this channel")
 async def command_statwatch(command, message):
-  default("statreports", set()).add((message.guild.id, message.channel.id))
-  save_data()
+  (await default("statreports", set())).add((message.guild.id, message.channel.id))
+  await save_data()
   await send(message, "Now watching bot status reports in this channel!", reaction = "check")
 
 @client.command("Bot Manager Commands", ["statunwatch"], "statunwatch", "stop watching bot status reports in this channel")
 async def command_statunwatch(command, message):
-  default("statreports", set()).discard((message.guild.id, message.channel.id))
-  save_data()
+  (await default("statreports", set())).discard((message.guild.id, message.channel.id))
+  await save_data()
   await send(message, "No longer watching bot status reports in this channel!", reaction = "check")
 
 @client.command("Bot Manager Commands", ["stop", ".+"], "stop <botname | all>", "stop a certain bot or all bots")
@@ -109,8 +117,8 @@ async def command_ignore(command, message):
     elif member.id in config["global-arguments"]["sudo"]:
       await send(message, "You cannot {verb} {name} as they are a sudo user!".format(verb = command[0], name = member.display_name))
     else:
-      default("ignore", {})[(message.guild.id, member.id)] = time.time() + int(command[2]) if len(command) > 2 else -1
-      save_data()
+      (await default("ignore", {}))[(message.guild.id, member.id)] = time.time() + int(command[2]) if len(command) > 2 else -1
+      await save_data()
       if len(command) > 2:
         await send(message, ("Bonk! " if command[0] == "bonk" else "") + "{mention} is being ignored for {time} second{plural}!".format(
           mention = member.mention,
@@ -128,9 +136,9 @@ async def command_unignore(command, message):
     await send(message, "If you were ignored, you would not be able to unignore yourself. Since you aren't, this command doesn't change anything. Please reconsider your choices.", reaction = "x")
   else:
     key = (message.guild.id, member.id)
-    if key in default("ignore", {}) and (data()["ignore"][key] == -1 or data()["ignore"][key] > time.time()):
-      del data()["ignore"][key]
-      save_data()
+    if key in (await default("ignore", {})) and ((await data())["ignore"][key] == -1 or (await data())["ignore"][key] > time.time()):
+      del (await data())["ignore"][key]
+      await save_data()
       await send(message, "{mention} is no longer being ignored!".format(mention = member.mention))
     else:
       await send(message, "{name} is not currently ignored!".format(name = member.display_name))
