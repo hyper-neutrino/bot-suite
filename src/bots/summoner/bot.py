@@ -1,11 +1,13 @@
 import datetime, discord, time
 
-from .botmanager import start, stop, aliases, titles
+from .botmanager import start, stop, aliases, titles, bots
 
 from utils.datautils import config, data, save_data, default, set_client
 from utils.discordbot import BotClient, send, get_member
 
 client = None
+
+botlist = ["toplane", "jungler", "midlane", "botlane", "support", "timer", "neutrino"]
 
 class SummonerClient(BotClient):
   def __init__(self):
@@ -19,15 +21,14 @@ class SummonerClient(BotClient):
       channel = message.channel.name,
       message = message.content
     ))
+    if message.author.id != self.user.id and "❤️" in message.content:
+      await send(message, "❤️")
 
   async def on_ready(self):
     await (self.announce("Summoner is now online! Starting the other bots now."))
     
-    start("toplane")
-    start("jungler")
-    start("midlane")
-    start("botlane")
-    start("support")
+    for bot in botlist:
+      start(bot)
     
   async def on_guild_join(self, guild):
     add_guild(data, guild)
@@ -39,7 +40,7 @@ client = SummonerClient()
 async def command_help(command, message):
   await send(message, embed = discord.Embed(
     title = "BotSuite help",
-    description = """`pls help <toplane | jungler | midlane | botlane | support | summoner >`: help about a specific bot"""
+    description = """`pls help < {botlist} | summoner >`: help about a specific bot""".format(botlist = " | ".join(botlist))
   ), reaction = "check")
 
 @client.command("Utility Commands", ["test"], "test", "Test the Summoner bot")
@@ -67,43 +68,43 @@ async def command_statunwatch(command, message):
 @client.command("Bot Manager Commands", ["stop", ".+"], "stop <botname | all>", "stop a certain bot or all bots")
 async def command_stop(command, message):
   if command[1] == "all":
-    for bot in ["toplane", "jungler", "midlane", "botlane", "support"]:
+    for bot in botlist:
       try:
         stop(bot)
       except:
         pass
-    await send(message, "All bots have been killed!")
+    await send(message, "All bots have been killed!", reaction = "check")
   else:
     stop(command[1])
-    await send(message, "{title} has been killed!".format(title = titles[aliases[command[1]]]))
+    await send(message, "{title} has been killed!".format(title = titles[aliases[command[1]]]), reaction = "check")
 
 @client.command("Bot Manager Commands", ["start", ".+"], "start <botname | all>", "start a certain bot or all bots")
 async def command_stop(command, message):
   if command[1] == "all":
-    for bot in ["toplane", "jungler", "midlane", "botlane", "support"]:
+    for bot in botlist:
       try:
         start(bot)
       except:
         pass
-    await send(message, "All bots are being started!")
+    await send(message, "All bots are being started!", reaction = "check")
   else:
     start(command[1])
-    await send(message, "{title} is being started!".format(title = titles[aliases[command[1]]]))
+    await send(message, "{title} is being started!".format(title = titles[aliases[command[1]]]), reaction = "check")
 
 @client.command("Bot Manager Commands", ["restart", ".+"], "restart <botname | all>", "restart a certain bot or all bots (functionally `stop` + `start`)")
 async def command_restart(command, message):
   if command[1] == "all":
-    for bot in ["toplane", "jungler", "midlane", "botlane", "support"]:
+    for bot in botlist:
       try:
         stop(bot)
         start(bot)
       except:
         pass
-    await send(message, "All bots are being restarted!")
+    await send(message, "All bots are being restarted!", reaction = "check")
   else:
     stop(command[1])
     start(command[1])
-    await send(message, "{title} is being restarted!".format(title = titles[aliases[command[1]]]))
+    await send(message, "{title} is being restarted!".format(title = titles[aliases[command[1]]]), reaction = "check")
 
 @client.command("Bot Manager Commands", ["bonk", ".+", "?"], "bonk <user> [time]", "alias for `ignore`")
 @client.command("Bot Manager Commands", ["ignore", ".+", "?"], "ignore <user> [time]", "ignore a user until [time] seconds from now")
@@ -115,7 +116,7 @@ async def command_ignore(command, message):
     if member == message.author:
       await send(message, "You cannot {verb} yourself!".format(verb = command[0]))
     elif member.id in config["global-arguments"]["sudo"]:
-      await send(message, "You cannot {verb} {name} as they are a sudo user!".format(verb = command[0], name = member.display_name))
+      await send(message, "You cannot {verb} {name} as they are a sudo user!".format(verb = command[0], name = member.display_name), reaction = "check")
     else:
       (await default("ignore", {}))[(message.guild.id, member.id)] = time.time() + int(command[2]) if len(command) > 2 else -1
       await save_data()
@@ -126,7 +127,7 @@ async def command_ignore(command, message):
           plural = "" if command[2] == "1" else "s"
         ))
       else:
-        await send(message, ("Bonk! " if command[0] == "bonk" else "") + "{mention} is being ignored indefinitely!".format(mention = member.mention))
+        await send(message, ("Bonk! " if command[0] == "bonk" else "") + "{mention} is being ignored indefinitely!".format(mention = member.mention), reaction = "check")
 
 @client.command("Bot Manager Commands", ["unbonk", ".+", "?"], "unbonk <user>", "alias for `unignore`")
 @client.command("Bot Manager Commands", ["unignore", ".+", "?"], "unignore <user>", "stop ignoring a user immediately (essentially `ignore <user> 0`)")
@@ -139,8 +140,8 @@ async def command_unignore(command, message):
     if key in (await default("ignore", {})) and ((await data())["ignore"][key] == -1 or (await data())["ignore"][key] > time.time()):
       del (await data())["ignore"][key]
       await save_data()
-      await send(message, "{mention} is no longer being ignored!".format(mention = member.mention))
+      await send(message, "{mention} is no longer being ignored!".format(mention = member.mention), reaction = "check")
     else:
-      await send(message, "{name} is not currently ignored!".format(name = member.display_name))
+      await send(message, "{name} is not currently ignored!".format(name = member.display_name), reaction = "x")
 
 set_client(client)

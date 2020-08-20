@@ -1,6 +1,8 @@
-import ast, discord, re, shlex, time, traceback
+import asyncio, discord, json, os, re, requests, shlex, time, traceback
 
-from .datautils import data, save_data, default
+from aioconsole import ainput
+
+from .datautils import config, data, save_data, default
 from .errors import BotError
 from .logging import log
 
@@ -46,6 +48,7 @@ async def send(message, *args, **kwargs):
         await message.add_reaction(emojis(message.guild).get(reaction, emoji_shorthand.get(reaction, reaction)))
       except:
         log("Failed to add emoji {emoji}".format(emoji = reaction), "ERROR")
+  return reply
 
 async def get_member(guild, string, caller = None):
   match = None
@@ -101,12 +104,16 @@ def get_color(string):
   raise BotError("Invalid color format; 0x<hexcode>, integer, or a Discord template color.")
 
 class BotClient(discord.Client):
-  def __init__(self):
+  def __init__(self, prefix = "pls"):
     discord.Client.__init__(self)
     self.commands = {}
     self.sections = []
     self.name = ""
+    self.prefix = prefix
     self.color = 0x3333AA
+    
+    self.gid = 699314655973212242
+    self.cid = 741144497588535378
   
   async def on_ready(self):
     await (self.announce("Hello o/ I am now ready!"))
@@ -137,22 +144,31 @@ class BotClient(discord.Client):
     pass
   
   async def help(self, message):
-    embed = discord.Embed(
-      title = "Help - Commands",
-      description = "Commands for this bot ({name}). Prefixing a command with `please` instead of `pls` will do the same thing but output any errors into the channel instead of ignoring them.".format(name = self.name),
-      color = self.color
-    )
+    if self.prefix == "pls":
+      embed = discord.Embed(
+        title = "Help - Commands",
+        description = "Commands for this bot ({name}). Prefixing a command with `please` instead of `pls` will do the same thing but output any errors into the channel instead of ignoring them.".format(name = self.name),
+        color = self.color
+      )
+    else:
+      embed = discord.Embed(
+        title = "Help - Commands",
+        color = self.color
+      )
     
     for section in self.sections:
       if section == "": continue
       commands = []
       for _, syntax, description, _, _ in self.commands[section]:
-        commands.append("`pls {syntax}`: {desc}".format(syntax = syntax, desc = description))
+        commands.append("`{prefix} {syntax}`: {desc}".format(prefix = self.prefix, syntax = syntax, desc = description))
       embed.add_field(name = section, value = "\n".join(commands), inline = False)
     
     await send(message, embed = embed, reaction = "check")
 
   async def on_message(self, message):
+    if message.content == "!!forcekill" or message.content == "!!forcekill {name}".format(name = self.name) and message.author.id in config["global-arguments"]["sudo"]:
+      await send(message, "**<shutting down...>**", reaction = "!")
+      os.kill(os.getpid(), 9)
     try:
       if message.guild:
         key = (message.guild.id, message.author.id)
@@ -166,9 +182,9 @@ class BotClient(discord.Client):
       components = shlex.split(message.content)
       if not components: return
       lowered = list(map(str.lower, components))
-      if lowered == ["pls", "help", self.name] or lowered == ["please", "help", self.name]:
+      if lowered == [self.prefix, "help"] + ([self.name] if self.name and self.prefix == "pls" else []) or self.prefix == "pls" and lowered == ["please", "help"] + ([self.name] if self.name else []):
         await self.help(message)
-      if lowered[0] == "pls" or lowered[0] == "please":
+      if lowered[0] == self.prefix or self.prefix == "pls" and lowered[0] == "please":
         show_error = components[0] == "please"
         components = components[1:]
         for section in self.sections:
@@ -217,3 +233,69 @@ class BotClient(discord.Client):
           break
     except:
       pass
+  
+  async def edit_pfp(self, url):
+    try:
+      with open("log.txt", "a") as f:
+        f.write(self.name + " - changing profile\n")
+      await self.user.edit(avatar = requests.get(url).content)
+      with open("log.txt", "a") as f:
+        f.write("success!")
+    except:
+      with open("log.txt", "a") as f:
+        f.write(traceback.format_exc() + "\n")
+  
+  async def dircomm(self, command):
+    if command.startswith("profilepic "):
+      print("Setting profile picture...")
+      await self.edit_pfp(command[11:])
+    elif command.startswith("gg "):
+      print("Setting guild...")
+      g = command[3:].strip()
+      if g.isdigit():
+        g = int(g)
+        if self.get_guild(g):
+          self.gid = g
+        else:
+          print("Guild does not exist / I am not in this guild!")
+      else:
+        for guild in self.guilds:
+          if guild.name == g:
+            self.gid = guild.id
+            break
+        else:
+          print("Guild does not exist / I am not in this guild!")
+    elif command.startswith("gc "):
+      print("Setting channel...")
+      c = command[3:].strip()
+      if c.isdigit():
+        c = int(c)
+        if self.get_guild(self.gid).get_channel(c):
+          self.cid = c
+        else:
+          print("Channel does not exist / I am not in this channel!")
+      else:
+        for channel in self.get_guild(self.gid).channels:
+          if channel.name == c:
+            self.cid = channel.id
+            break
+        else:
+          print("Channel does not exist / I am not in this channel!")
+    elif command.startswith("send "):
+      print("Sending message...")
+      m = command[5:].strip()
+      await self.get_guild(self.gid).get_channel(self.cid).send(m)
+  
+  async def broadcasts(self):
+    while True:
+      try:
+        await self.dircomm(await ainput())
+      except:
+        print(traceback.format_exc())
+  
+  def main(self):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.gather(
+      self.broadcasts(),
+      self.start(config["discord-tokens"][self.name])
+    ))

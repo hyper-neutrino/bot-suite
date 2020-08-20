@@ -111,14 +111,6 @@ class ToplaneClient(BotClient):
         (await default(tuple(sorted(word)), set(), wordmap)).add(word)
 
   async def process(self, message):
-    if message.author.id == 233642573888094218:
-      await message.add_reaction("❤️")
-      await message.add_reaction("🧡")
-      await message.add_reaction("💛")
-      await message.add_reaction("💚")
-      await message.add_reaction("💙")
-      await message.add_reaction("💜")
-      await message.add_reaction("❣️")
     await anagram_function(message, answer = re.sub("[?!.,\"'()\\[\\]{}> `*_~]", "", message.content.strip()))
 
 def save_words():

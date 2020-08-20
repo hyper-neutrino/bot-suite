@@ -1,4 +1,4 @@
-import base64, discord, requests, traceback
+import base64, datetime, discord, requests, traceback
 
 from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send, get_member
@@ -19,6 +19,39 @@ client = JunglerClient()
 async def command_test(command, message):
   await send(message, "Test success!", reaction = "check")
 
+@client.command("Link Commands", [".+", "link", ".+", "?"], "<lol | cf | dmoj> link <user> <account> | <type> link (user = me) <account>", "link a user to an external ID/account")
+async def command_ext_link(command, message):
+  if command[0] in ["lol", "cf", "dmoj"]:
+    member = await get_member(message.guild, command[2], message.author) if len(command) > 3 else message.author
+    ext = command[3] if len(command) > 3 else command[2]
+    old = (await default("{et}_links".format(et = command[0]), {})).get(member.id)
+    (await data())["{et}_links".format(et = command[0])][member.id] = ext
+    await save_data()
+    await send(message, "Linked {name} to {ext}{prev}!".format(
+      name = member.display_name,
+      ext = ext,
+      prev = " (previously {ext})".format(ext = old) if old else ""
+    ), reaction = "check")
+  else:
+    await send(message, "Service does not exist! Currently supported: `lol` for League of Legends, `cf` for Codeforces, `dmoj` for DMOJ.", reaction = "x")
+
+@client.command("Link Commands", [".+", "unlink", "?"], "<lol | cf | dmoj> unlink [user = me]", "unlink a user from their external ID/account")
+async def command_ext_unlink(command, message):
+  if command[0] in ["lol", "cf", "dmoj"]:
+    member = await get_member(message.guild, command[2], message.author) if len(command) > 2 else message.author
+    old = (await default("{et}_links".format(et = command[0]), {})).get(member.id)
+    if old:
+      del (await data())["{et}_links".format(et = command[0])][member.id]
+      await save_data()
+      await send(message, "Unlinked {name} from {ext}!".format(
+        name = member.display_name,
+        ext = old
+      ), reaction = "check")
+    else:
+      await send(message, "{name} is not linked!".format(name = member.display_name), reaction = "x")
+  else:
+    await send(message, "Service does not exist! Currently supported: `lol` for League of Legends, `cf` for Codeforces, `dmoj` for DMOJ.", reaction = "x")
+
 @client.command("League Commands", ["lol", "report-player", "?", "?", "?"], "lol report-player [user = me] [index = last] [queue = all]", "generate a report for a player in a league of legends game")
 @client.command("League Commands", ["lol", "report", "?", "?", "?"], "lol report [user = me + friend + ...] [index = last] [queue = all]", "generate a report for a league of legends game")
 async def command_lol_report(command, message):
@@ -36,7 +69,7 @@ async def command_lol_report(command, message):
         summs.append((await data())["lol_links"][member.id])
       except:
         summs.append(substr)
-  if summs:
+  if summs is not None:
     print("Beginning report...")
     fail = False
     index = (0 if command[3].lower() == "last" else int(command[3]) - 1) if len(command) > 3 else 0
@@ -86,7 +119,7 @@ async def command_lol_report(command, message):
 async def command_lol_current(command, message):
   if len(command) <= 2:
     if message.author.id not in (await default("lol_links", {})):
-      await send(message, "You are not linked; use `pls lol link [user = me] <summoner>` to self-call the report command.", reaction = "x")
+      await send(message, "You are not linked; use `pls lol link [user = me] <summoner>` to self-call the current report command.", reaction = "x")
       summs = None
     else:
       summs = [(await data())["lol_links"][message.author.id]]
@@ -98,51 +131,122 @@ async def command_lol_current(command, message):
         summs.append((await data())["lol_links"][member.id])
       except:
         summs.append(substr)
-  try:
-    game = watcher.spectator.by_summoner(lol_region, watcher.summoner.by_name(lol_region, summs[0])["id"])
+  if summs is not None:
     try:
-      if command[1] == "current":
-        await send(message, embed = await lol_current_embed(message.guild, game, summs), reaction = "check")
-      elif command[1] == "current-player":
-        await send(message, embed = await lol_current_player_embed(message.guild, game, summs), reaction = "check")
-    except:
+      game = watcher.spectator.by_summoner(lol_region, watcher.summoner.by_name(lol_region, summs[0])["id"])
+      try:
+        if command[1] == "current":
+          await send(message, embed = await lol_current_embed(message.guild, game, summs), reaction = "check")
+        elif command[1] == "current-player":
+          await send(message, embed = await lol_current_player_embed(message.guild, game, summs), reaction = "check")
+      except:
+        print(traceback.format_exc())
+        await send(message, "Failed to create embed!", reaction = "x")
+    except Exception as e:
       print(traceback.format_exc())
-      await send(message, "Failed to create embed!", reaction = "x")
-  except Exception as e:
-    print(traceback.format_exc())
-    await send(message, "Could not find current game for {region}/{summoner} or summoner does not exist! Check your spelling, or the summoner may not be in game.".format(
-      region = lol_region.upper(),
-      summoner = summs[0]
-    ), reaction = "x")
+      await send(message, "Could not find current game for {region}/{summoner} or summoner does not exist! Check your spelling, or the summoner may not be in game.".format(
+        region = lol_region.upper(),
+        summoner = summs[0]
+      ), reaction = "x")
 
-@client.command("League Commands", ["lol", "link", ".+", "?"], "lol link <user> <summoner> | lol link (user = me) <summoner>", "link a user to a league of legends summoner")
-async def command_lol_link(command, message):
-  member = await get_member(message.guild, command[2], message.author) if len(command) > 3 else message.author
-  summoner = command[3] if len(command) > 3 else command[2]
-  old = (await default("lol_links", {})).get(member.id)
-  (await data())["lol_links"][member.id] = summoner
-  await save_data()
-  await send(message, "Linked {name} to {region}/{summoner}{prev}!".format(
-    name = member.display_name,
-    region = lol_region.upper(),
-    summoner = summoner,
-    prev = " (previously {region}/{summoner})".format(region = lol_region.upper(), summoner = old) if old else ""
-  ), reaction = "check")
-
-@client.command("League Commands", ["lol", "unlink", "?"], "lol unlink [user = me]", "unlink a user from their league of legends summoner")
-async def command_lol_unlink(command, message):
-  member = await get_member(message.guild, command[2], message.author) if len(command) > 2 else message.author
-  old = (await default("lol_links", {})).get(member.id)
-  if old:
-    del (await data())["lol_links"][member.id]
-    await save_data()
-    await send(message, "Unlinked {name} from {region}/{summoner}!".format(
-      name = member.display_name,
-      region = lol_region.upper(),
-      summoner = old
-    ), reaction = "check")
+@client.command("Codeforces Commands", ["cf", "details", "?"], "cf details [account = me]", "get all public details of a codeforces user")
+@client.command("Codeforces Commands", ["cf", "rank", "?"], "cf rank [account = me]", "alias for `cf rating`")
+@client.command("Codeforces Commands", ["cf", "rating", "?"], "cf rating [account = me]", "get the current and maximum rank/rating of a codeforces user")
+async def command_cf_details(command, message):
+  if len(command) <= 2:
+    if message.author.id not in (await default("cf_links", {})):
+      await send(message, "You are not linked; use `pls cf link [user = me] [handle]` to self-call the rating command.", reaction = "x")
+      cf = None
+    else:
+      cf = (await data())["cf_links"][message.author.id]
   else:
-    await send(message, "{name} is not linked!".format(name = member.display_name), reaction = "x")
+    try:
+      member = await get_member(message.guild, command[2], message.author)
+      cf = (await data())["cf_links"][member.id]
+    except:
+      cf = command[2]
+  if cf is not None:
+    rv = requests.get("https://codeforces.com/api/user.info?handles=" + cf).json()
+    if rv["status"] == "OK":
+      cfdata = rv["result"][0]
+      if command[1] == "rank" or command[1] == "rating":
+        await send(message, "{user} is rank {rank} [{rating}] (max {maxrank} [{maxrating}])!".format(
+          user = cf,
+          rank = cfdata["rank"],
+          rating = cfdata["rating"],
+          maxrank = cfdata["maxRank"],
+          maxrating = cfdata["maxRating"]
+        ), reaction = "check")
+      elif command[1] == "details":
+        embed = discord.Embed(title = cf, color = 0x3333AA, url = "https://codeforces.com/profile/" + cf).set_image(url = "http:" + cfdata["avatar"])
+        for key, name in [
+          ("email", "Email Address"),
+          ("firstName", "First Name"),
+          ("lastName", "Last Name"),
+          ("organization", "Organization"),
+          ("contribution", "Contribution"),
+          ("friendOfCount", "Friend Of #")
+        ]:
+          if cfdata.get(key):
+            embed.add_field(name = name, value = str(cfdata[key]))
+        if cfdata.get("country") or cfdata.get("city"):
+          embed.add_field(name = "Location", value = "{city}{country}".format(
+            city = "{c}, ".format(c = cfdata["city"]) if cfdata.get("city") else "",
+            country = cfdata["country"]
+          ))
+        embed.add_field(name = "Current Rank", value = "{rank} [{rating}]".format(rank = cfdata["rank"], rating = cfdata["rating"]))
+        embed.add_field(name = "Maximum Rank", value = "{rank} [{rating}]".format(rank = cfdata["maxRank"], rating = cfdata["maxRating"]))
+        embed.add_field(name = "Registered Since", value = datetime.datetime.fromtimestamp(cfdata["registrationTimeSeconds"]).strftime("%B %d, %Y at %H:%M:%S"))
+        embed.add_field(name = "Last Seen Online", value = datetime.datetime.fromtimestamp(cfdata["lastOnlineTimeSeconds"]).strftime("%B %d, %Y at %H:%M:%S"))
+        await send(message, embed = embed, reaction = "check")
+    else:
+      await send(message, "'{cf}' is not a Codeforces user!".format(cf = cf), reaction = "x")
+
+@client.command("DMOJ Commands", ["dmoj", "details", "?"], "dmoj details [account = me]", "get all public details of a DMOJ user")
+@client.command("DMOJ Commands", ["dmoj", "rank", "?"], "dmoj rank [account = me]", "alias for `dmoj rating`")
+@client.command("DMOJ Commands", ["dmoj", "rating", "?"], "dmoj rating [account = me]", "get the current and maximum rank/rating of a DMOJ user")
+async def command_dmoj_details(command, message):
+  if len(command) <= 2:
+    if message.author.id not in (await default("dmoj_links", {})):
+      await send(message, "You are not linked; use `pls dmoj link [user = me] [handle]` to self-call the rating command.", reaction = "x")
+      dm = None
+    else:
+      dm = (await data())["dmoj_links"][message.author.id]
+  else:
+    try:
+      member = await get_member(message.guild, command[2], message.author)
+      dm = (await data())["dmoj_links"][member.id]
+    except:
+      dm = command[2]
+  if dm is not None:
+    rv = requests.get("https://dmoj.ca/api/v2/user/" + dm).json()
+    if "error" in rv:
+      await send(message, "Error fetching DMOJ user details; likely user does not exist.", reaction = "x")
+    else:
+      dmdata = rv["data"]["object"]
+      rating = dmdata["rating"]
+      if rating < 1000:
+        rank = "Newbie"
+      elif rating < 1200:
+        rank = "Amateur"
+      elif rating < 1500:
+        rank = "Expert"
+      elif rating < 1800:
+        rank = "Candidate Master"
+      elif rating < 2200:
+        rank = "Master"
+      elif rating < 3000:
+        rank = "Grandmaster"
+      else:
+        rank = "Target"
+      if dmdata["rank"] == "admin":
+        rank += " (Admin)"
+      if command[1] == "rank" or command[1] == "rating":
+        await send(message, "{user} is rank {rank} [{rating}]!".format(
+          user = dmdata["username"],
+          rank = rank,
+          rating = rating
+        ), reaction = "check")
 
 set_client(client)
 

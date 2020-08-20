@@ -729,6 +729,7 @@ engineer
 engineering
 enhance
 enjoy
+enlarge
 enormous
 enough
 ensure
@@ -843,6 +844,7 @@ female
 fence
 fewer
 fiber
+fibre
 fiction
 fidget
 field
@@ -972,6 +974,7 @@ handle
 happen
 happy
 hardly
+harps
 headline
 headquarters
 health
@@ -1241,6 +1244,7 @@ medication
 medicine
 medium
 meeting
+melon
 member
 membership
 memory
@@ -1464,6 +1468,7 @@ physician
 piano
 picture
 piece
+pierce
 pilot
 pitch
 place
@@ -1625,6 +1630,7 @@ rarest
 rather
 rating
 ratio
+rattle
 reach
 react
 reaction
@@ -1650,6 +1656,7 @@ recording
 recover
 recovery
 recruit
+redesign
 reduce
 reduction
 refer
@@ -2080,6 +2087,7 @@ through
 throughout
 throw
 ticket
+ticks
 tight
 tired
 tissue
@@ -2119,6 +2127,7 @@ transition
 translate
 transportation
 travel
+treason
 treat
 treatment
 treaty

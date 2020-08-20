@@ -1,20 +1,28 @@
-from .toplane import start as start_toplane
-from .jungler import start as start_jungler
-from .midlane import start as start_midlane
-from .botlane import start as start_botlane
-from .support import start as start_support
-from .summoner import start as start_summoner
-
 def start(name):
   if name == "toplane":
-    start_toplane()
+    from .toplane  import client
+    client.main()
   elif name == "jungler":
-    start_jungler()
+    from .jungler  import client
+    client.main()
   elif name == "midlane":
-    start_midlane()
+    from .midlane  import client
+    client.main()
   elif name == "botlane":
-    start_botlane()
+    from .botlane  import client
+    client.main()
   elif name == "support":
-    start_support()
+    from .support  import client
+    client.main()
   elif name == "summoner":
-    start_summoner()
+    from .summoner import start
+    start()
+  elif name == "timer":
+    from .timer    import start
+    start()
+  elif name == "neutrino":
+    from .neutrino import start
+    start()
+  else:
+    print("?")
+    return

@@ -1,4 +1,4 @@
-import subprocess
+import subprocess, sys
 
 from utils.errors import BotError
 
@@ -15,7 +15,9 @@ aliases = {
   "botlane": "botlane",
   "bot": "botlane",
   "support": "support",
-  "sup": "support"
+  "sup": "support",
+  "timer": "timer",
+  "neutrino": "neutrino"
 }
 
 titles = {
@@ -23,7 +25,19 @@ titles = {
   "jungler": "Jungler",
   "midlane": "MidLane",
   "botlane": "BotLane",
-  "support": "Support"
+  "support": "Support",
+  "timer": "Debate Timer",
+  "neutrino": "Neutrino's Bot"
+}
+
+commands = {
+  "toplane": ["python3", "src/main.py", "toplane"],
+  "jungler": ["python3", "src/main.py", "jungler"],
+  "midlane": ["python3", "src/main.py", "midlane"],
+  "botlane": ["nodejs", "src/botlane.js"],
+  "support": ["python3", "src/main.py", "support"],
+  "timer": ["python3", "src/main.py", "timer"],
+  "neutrino": ["python3", "src/main.py", "neutrino"],
 }
 
 def start(name):
@@ -31,7 +45,7 @@ def start(name):
     botname = aliases[name]
     if botname in bots:
       raise BotError("{title} is already running!".format(title = titles[botname]))
-    bots[botname] = subprocess.Popen(["python3", "src/main.py", botname], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+    bots[botname] = subprocess.Popen(commands[botname], stdin = subprocess.PIPE, stdout = sys.stdout, stderr = sys.stderr)
     return "success"
   raise BotError("'{name}' is not a recognized bot name!".format(name = name))
 

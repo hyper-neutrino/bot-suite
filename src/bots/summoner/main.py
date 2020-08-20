@@ -1,4 +1,4 @@
-import asyncio, pickle, traceback
+import asyncio, datetime, discord, json, pickle, random, traceback
 
 from aioconsole import ainput
 
@@ -23,67 +23,42 @@ async def backup():
         await client.announce("Data contents are broken; retrieving from backup!")
     await asyncio.sleep(300)
 
-async def discord():
+async def startbot():
   await client.start(config["discord-tokens"]["summoner"])
 
 async def direct():
-  gid = 699314655973212242
-  cid = 741144497588535378
   while True:
-    try:
-      bot, message = (await ainput(">>> ")).split(maxsplit = 1)
-      if bot == "gg":
-        if message.strip().isdigit():
-          g = int(message.strip())
-          if client.get_guild(g):
-            gid = g
-            print("Set guild to {guild}!".format(guild = client.get_guild(gid).name))
-          else:
-            print("Guild does not exist, or bot is not in that guild!")
-        else:
-          for guild in client.guilds:
-            if guild.name == message.strip():
-              gid = guild.id
-              print("Set guild to {guild}!".format(guild = guild.name))
-              break
-          else:
-            print("Guild does not exist, or bot is not in that guild!")
-      elif bot == "gc":
-        if message.strip().isdigit():
-          c = int(message.strip())
-          if client.get_guild(gid).get_channel(c):
-            cid = c
-            print("Set channel to {guild}#{channel}!".format(guild = client.get_guild(gid).name, channel = client.get_guild(gid).get_channel(cid).name))
-          else:
-            print("Channel does not exist, or bot does not have access!")
-        else:
-          for channel in client.get_guild(gid).channels:
-            if channel.name == message.strip():
-              cid = channel.id
-              print("Set channel to {channel}!".format(channel = channel.name))
-              break
-          else:
-            print("Channel does not exist, or bot does not have access!")
-      elif bot == "send":
-        if gid == -1 or cid == -1:
-          print("Guild or channel not set!")
-        else:
-          guild = client.get_guild(gid)
-          for emoji in guild.emojis:
-            message = message.replace(":{name}:".format(name = emoji.name), str(emoji))
-          for member in guild.members:
-            message = message.replace("@[{name}]".format(name = member.display_name), member.mention).replace("@[{name}]".format(name = member.name), member.mention)
-          for member in guild.members:
-            message = message.replace("@{name}".format(name = member.display_name), member.mention).replace("@{name}".format(name = member.name), member.mention)
-          await guild.get_channel(cid).send(message)
-          print("Sent!")
-    except:
-      print(traceback.format_exc())
+    line = await ainput(">>> ")
+    for botname in bots:
+      if line.startswith(botname):
+        bots[botname].stdin.write(bytes(line[len(botname) + 1:] + "\n", "utf-8"))
+        bots[botname].stdin.flush()
+        break
+    else:
+      await client.dircomm(line)
+
+async def profiles():
+  while True:
+    now = datetime.datetime.now()
+    tmr = datetime.datetime.fromtimestamp(now.timestamp() + 60 * 60 * 24)
+    nd = datetime.datetime(tmr.year, tmr.month, tmr.day)
+    delay = int(nd.timestamp() - now.timestamp())
+    if delay < 0: break
+    print("Changing profile in {delay} seconds!".format(delay = delay))
+    await asyncio.sleep(delay)
+    profiles = random.choice(config["profile-pictures"])
+    if "summoner" in profiles:
+      await client.edit_pfp(profiles["summoner"])
+    for name in profiles:
+      if name in bots:
+        bots[name].stdin.write(bytes("profilepic " + profiles[name] + "\n", "utf-8"))
+        bots[name].stdin.flush()
 
 def start():
   loop = asyncio.get_event_loop()
   loop.run_until_complete(asyncio.gather(
+    startbot(),
     backup(),
-    direct(),
-    discord()
+    profiles(),
+    direct()
   ))
