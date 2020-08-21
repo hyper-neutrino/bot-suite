@@ -27,10 +27,8 @@ async def command_role_give(command, message):
     roles = command[3:]
   member = await get_member(message.guild, user, message.author)
   await member.add_roles(*[get_role(message.guild, role) for role in roles])
-  await send(message, "Added {roles} to {user}!".format(
-    roles = english_list("'{role}'".format(role = role) for role in roles),
-    user = member.display_name
-  ), reaction = "check")
+  rd = english_list(f"'{role}'" for role in roles)
+  await send(message, f"Added {rd} to {member.display_name}!", reaction = "check")
   
 @client.command("Role Commands", ["gibnt", ".+", "+"], "gibnt <user> <role> <role> ...", "alias for `role remove`")
 @client.command("Role Commands", ["role", "rm", ".+", "+"], "role rm <user> <role> <role> ...", "alias for `role remove`")
@@ -44,34 +42,28 @@ async def command_role_remove(command, message):
     roles = command[3:]
   member = await get_member(message.guild, user, message.author)
   await member.remove_roles(*[get_role(message.guild, role) for role in roles])
-  await send(message, "Removed {roles} from {user}!".format(
-    roles = english_list("'{role}'".format(role = role) for role in roles),
-    user = member.display_name
-  ), reaction = "check")
+  rd = english_list(f"'{role}'" for role in roles)
+  await send(message, f"Removed {rd} from {member.display_name}!", reaction = "check")
 
 @client.command("Role Commands", ["role", "list", "?"], "role list [role]", "list this guild's roles, or users in a role")
 async def command_role_list(command, message):
   if len(command) > 2:
     role = get_role(message.guild, command[2])
-    await send(message, "'{role}' has the following users: {users}".format(
-      role = command[2],
-      users = english_list("{name}".format(name = member.display_name) for member in role.members)
-    ), reaction = "check")
+    await send(message, f"'{command[2]}' has the following users: {english_list(member.display_name for member in role.members)}", reaction = "check")
   else:
-    await send(message, "This guild's roles are: {roles}".format(
-      roles = english_list("'{role}'".format(role = role.name) for role in message.guild.roles[1:])
-    ), reaction = "check")
+    rd = english_list(f"'{role}'" for role in message.guild.roles[1:])
+    await send(message, f"This guild's roles are: {rd}", reaction = "check")
 
 @client.command("Role Commands", ["role", "colour", ".+", "?"], "role colour <role> [colour = 0]", "alias for `role color`")
 @client.command("Role Commands", ["role", "color", ".+", "?"], "role color <role> [color = 0]", "recolor a role to a specific color (if not specified, uncolored)")
 async def command_role_color(command, message):
   await get_role(message.guild, command[2]).edit(color = get_color(command[3] if len(command) > 3 else "0"))
-  await send(message, "Recolored '{role}'!".format(role = command[2]), reaction = "check")
+  await send(message, f"Recolored '{command[2]}'!", reaction = "check")
 
 @client.command("Role Commands", ["role", "rename", ".+", ".+"], "role rename <role> <name>", "rename a role")
 async def command_role_rename(command, message):
   await get_role(message.guild, command[2]).edit(name = command[3])
-  await send(message, "Renamed '{role}' to '{name}'!".format(role = command[2], name = command[3]), reaction = "check")
+  await send(message, f"Renamed '{command[2]}' to '{command[3]}'!", reaction = "check")
 
 @client.command("User Utility Commands", ["alias", ".+", "?"], "alias <name> [user = none]", "alias a string to a user")
 async def command_alias(command, message):
@@ -85,22 +77,14 @@ async def command_alias(command, message):
     member = await get_member(message.guild, command[2], message.author)
     (await data())["aliases"][(message.guild.id, command[1].lower())] = member.id
     await save_data()
-    await send(message, "Aliased '{alias}' to {user}{prev}!".format(
-      alias = command[1].lower(),
-      user = member.display_name,
-      prev = " (previously {name})".format(name = prev.display_name) if prev else ""
-    ), reaction = "check")
+    pd = f" (previously {prev.display_name})" if prev else ""
+    await send(message, f"Aliased '{command[1].lower()}' to {member.display_name}{pd}!", reaction = "check")
   elif existing:
     del (await data())["aliases"][(message.guild.id, command[1].lower())]
     await save_data()
-    await send(message, "Unaliased '{alias}' from {user}!".format(
-      alias = command[1].lower(),
-      user = prev.display_name
-    ), reaction = "check")
+    await send(message, f"Unaliased '{command[1].lower()}' from {prev.display_name}!", reaction = "check")
   else:
-    await send(message, "'{alias}' is not aliased to any user!".format(
-      alias = command[1].lower()
-    ), reaction = "check")
+    await send(message, f"'{command[1].lower()}' is not aliased to any user!", reaction = "check")
 
 set_client(client)
 

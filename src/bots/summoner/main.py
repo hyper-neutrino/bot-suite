@@ -44,7 +44,7 @@ async def profiles():
     nd = datetime.datetime(tmr.year, tmr.month, tmr.day)
     delay = int(nd.timestamp() - now.timestamp())
     if delay < 0: break
-    print("Changing profile in {delay} seconds!".format(delay = delay))
+    print(f"Changing profile in {delay} seconds!")
     await asyncio.sleep(delay)
     profiles = random.choice(config["profile-pictures"])
     if "summoner" in profiles:

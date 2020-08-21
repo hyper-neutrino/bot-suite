@@ -20,11 +20,7 @@ def display(actual, scrambled, hint):
   end = actual[-hint:]
   for c in start + end:
     cl.remove(c)
-  return "**{start}**{mid}**{end}**".format(
-    start = start,
-    mid = "".join(cl),
-    end = end
-  )
+  return f"**{start}**{''.join(cl)}**{end}**"
 
 async def anagram_function(message, answer = None, stop = False, start = False):
   global wordmap
@@ -33,11 +29,10 @@ async def anagram_function(message, answer = None, stop = False, start = False):
       if message.channel.id in (await default("anagrams", {})):
         actual, _, _, _ = (await data())["anagrams"][message.channel.id]
         if len(wordmap[tuple(sorted(actual))]) == 1:
-          await send(message, "Anagram puzzle ended! The correct answer was: '{actual}'.".format(actual = actual), reaction = "check")
+          await send(message, f"Anagram puzzle ended! The correct answer was: '{actual}'.", reaction = "check")
         else:
-          await send(message, "Anagram puzzle ended! The correct answers were: {answers}".format(
-            answers = ", ".join("'{word}'".format(word = ans) for ans in wordmap[tuple(sorted(actual))])
-          ))
+          answers = ", ".join(f"'{ans}'" for ans in wordmap[tuple(sorted(actual))])
+          await send(message, f"Anagram puzzle ended! The correct answers were: {answers}", reaction = "check")
         del (await data())["anagrams"][message.channel.id]
         await save_data()
       else:
@@ -61,14 +56,10 @@ async def anagram_function(message, answer = None, stop = False, start = False):
             await save_data()
           (await data())["puzzlepoints"][key]["anagram"] += points + bonus
           await save_data()
-          await send(message, "Congratulations to {name} for winning the anagram puzzle! (+{points}{bonus}){alternatives}".format(
-            name = message.author.mention,
-            points = points,
-            bonus = " **+{val}**".format(val = bonus) if bonus else "",
-            alternatives = " (Alternative answers: {answers})".format(
-              answers = ", ".join("'{word}'".format(word = alt) for alt in wordmap[tuple(sorted(answer))] - {answer})
-            ) if len(wordmap[tuple(sorted(answer))]) > 1 else ""
-          ), reaction = "check")
+          bd = f" **+{bonus}**" if bonus else ""
+          alts = ", ".join(wordmap[tuple(sorted(answer))] - {answer})
+          ad = f" (Alternative answers: {alts})" if len(wordmap[tuple(sorted(answer))]) > 1 else ""
+          await send(message, f"Congratulations to {message.author.mention} for winning the anagram puzzle! (+{points}{bd}){ad}", reaction = "check")
           correct = True
           (await default("anagramninja", {}))[message.channel.id] = (actual, time.time())
           await save_data()
@@ -78,7 +69,7 @@ async def anagram_function(message, answer = None, stop = False, start = False):
       if not correct and message.channel.id in (await default("anagramninja", {})):
         actual, timestamp = (await data())["anagramninja"][message.channel.id]
         if time.time() - timestamp <= 1 and sorted(answer.lower()) == sorted(actual.lower()) and answer.lower() in words:
-          await send(message, "{user} L".format(user = message.author.mention), reaction = "x")
+          await send(message, f"{message.author.mention} L", reaction = "x")
     if start:
       if message.channel.id not in (await default("anagrams", {})):
         answer = random.choice(words)
@@ -87,13 +78,10 @@ async def anagram_function(message, answer = None, stop = False, start = False):
         scrambled = "".join(cl)
         (await data())["anagrams"][message.channel.id] = (answer, scrambled, 0, time.time())
         await save_data()
-        await send(message, "Anagram puzzle! Solve for: '{scrambled}' ({length}).".format(scrambled = scrambled, length = len(scrambled)))
+        await send(message, f"Anagram puzzle! Solve for: '{scrambled}' ({len(scrambled)}).")
       else:
         actual, scrambled, hint, _ = (await data())["anagrams"][message.channel.id]
-        await send(message, "An anagram puzzle is already running! Solve for: '{display}' ({length}).".format(
-          display = display(actual, scrambled, hint),
-          length = len(actual)
-        ), reaction = "x")
+        await send(message, f"An anagram puzzle is already running! Solve for: '{display(actual, scrambled, hint)}' ({len(actual)}).", reaction = "x")
     await save_data()
 
 class ToplaneClient(BotClient):
@@ -146,12 +134,7 @@ async def command_anagram_stop(command, message):
     if hint * 2 >= len(answer) - 1:
       await anagram_function(message, stop = True)
     else:
-      await send(message, "Hint: the current puzzle starts with '{start}' and ends with '{end}' ('{display}' ({length})).".format(
-        start = answer[:hint],
-        end = answer[-hint:],
-        display = display(answer, scrambled, hint),
-        length = len(answer)
-      ), reaction = "check")
+      await send(message, f"Hint: the current puzzle starts with '{answer[:hint]}' and ends with '{answer[-hint:]}' ('{display(answer, scrambled, hint)}' ({len(answer)})).", reaction = "check")
       (await data())["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
       await save_data()
 
@@ -164,7 +147,7 @@ async def command_anagram_reorder(command, message):
     cl = list(scrambled)
     random.shuffle(cl)
     scrambled = "".join(cl)
-    await send(message, "Reordered: solve for '{display}'.".format(display = display(answer, scrambled, hint)), reaction = "check")
+    await send(message, f"Reordered: solve for '{display(answer, scrambled, hint)}'.", reaction = "check")
     (await data())["anagrams"][message.channel.id] = (answer, scrambled, hint, timestamp)
     await save_data()
 
@@ -179,7 +162,7 @@ async def command_anagram_add(command, message):
     words.sort()
     (await default(tuple(sorted(command[2])), set(), wordmap)).add(command[2])
     save_words()
-    await send(message, "Added '{word}' to the dictionary!".format(word = command[2]), reaction = "check")
+    await send(message, f"Added '{command[2]}' to the dictionary!", reaction = "check")
 
 @client.command("Puzzle Commands", ["anagram", "rm", ".+"], "anagram rm <word>", "alias for `anagram remove`")
 @client.command("Puzzle Commands", ["anagram", "remove", ".+"], "anagram remove <word>", "remove a word from the dictionary")
@@ -190,7 +173,7 @@ async def command_anagram_remove(command, message):
     words.remove(command[2])
     wordmap[tuple(sorted(command[2]))].discard(command[2])
     save_words()
-    await send(message, "Removed '{word}' from the dictionary!".format(word = command[2]), reaction = "check")
+    await send(message, f"Removed '{command[2]}' from the dictionary!", reaction = "check")
 
 @client.command("Puzzle Commands", ["anagram", "leaderboard"], "anagram leaderboard", "display the anagram puzzle score leaderboard")
 async def command_anagram_leaderboard(command, message):
@@ -202,7 +185,7 @@ async def command_anagram_leaderboard(command, message):
   scores.sort(reverse = True)
   await send(message, embed = discord.Embed(
     title = "Anagram Leaderboard",
-    description = "\n".join("{mention} - {score}".format(mention = member.mention, score = score) for score, member in scores) or "The leaderboard is empty!"
+    description = "\n".join(f"{member.mention} - {score}" for score, member in scores) or "The leaderboard is empty!"
   ), reaction = "check")
 
 @client.command("Reddit Commands", ["ket"], "ket", "alias for `cat`")
@@ -211,11 +194,11 @@ async def command_anagram_leaderboard(command, message):
 @client.command("Reddit Commands", ["meme"], "meme", "fetch a random meme from /r/memes")
 async def command_anagram_cat(command, message):
   if command[0] == "ket" and random.random() < 0.01:
-    await send(message, "{mention} overdosed on ketamine and died.".format(mention = message.author.mention), reaction = "x")
+    await send(message, f"{message.author.mention} overdosed on ketamine and died.", reaction = "x")
   else:
     while True:
       item = reddit.subreddit("cat" if command[0] == "ket" or command[0] == "cat" else "memes").random()
-      if message.channel.is_nsfw() or not item.over_18:
+      if any(item.url.endswith(suffix) for suffix in [".jpg", ".png", ".gif"]) and (message.channel.is_nsfw() or not item.over_18):
         break
     await send(message, item.url, reaction = "check")
 
@@ -223,16 +206,13 @@ async def command_anagram_cat(command, message):
 @client.command("Reddit Commands", ["joke"], "joke", "fetch a random joke from /r/jokes")
 async def command_anagram_cat(command, message):
   if random.random() < 0.01:
-    await send(message, "{mention} **Discord** would like access to your camera.".format(mention = message.author.mention), reaction = "check")
+    await send(message, f"{message.author.mention} **Discord** would like access to your camera.", reaction = "check")
   else:
     while True:
       item = reddit.subreddit("jokes").random()
-      if message.channel.is_nsfw() or not item.over_18:
+      if item.selftext and (message.channel.is_nsfw() or not item.over_18):
         break
-    await send(message, "**{title}**\n{body}".format(
-      title = item.title,
-      body = item.selftext
-    ), reaction = "check")
+    await send(message, f"**{item.title}**\n{item.selftext}", reaction = "check")
 
 @client.command("Miscellaneous Commands", ["roll", "?"], "roll [config: xdy+xdy-xdy+...+n default 1d6]", "roll a die / dice (`<x>d<y>` to roll `x` `y`-sided dice)")
 async def command_roll(command, message):
@@ -264,23 +244,16 @@ async def command_roll(command, message):
     if 1 < len(pos) + len(neg) < 10:
       breakdown = ""
       if pos:
-        breakdown += "[ {pos} ]".format(pos = ", ".join(map(str, pos)))
+        breakdown += f"[ {', '.join(map(str, pos))} ]"
       if neg:
-        breakdown += " - [ {neg} ]".format(neg = ", ".join(map(str, neg)))
+        breakdown += f" - [ {', '.join(map(str, pos))} ]"
       if mod > 0:
-        breakdown += " + {mod}".format(mod = mod)
+        breakdown += f" + {mod}"
       elif mod < 0:
-        breakdown += " - {mod}".format(mod = -(mod))
-      await send(message, "{mention} rolled **{result}**! ({breakdown})".format(
-        mention = message.author.mention,
-        result = sum(pos) - sum(neg) + mod,
-        breakdown = breakdown
-      ))
+        breakdown += f" - {-mod}"
+      await send(message, f"{message.author.mention} rolled **{sum(pos) - sum(neg) + mod}**! ({breakdown})")
     else:
-      await send(message, "{mention} rolled **{result}**!".format(
-        mention = message.author.mention,
-        result = sum(pos) - sum(neg) + mod
-      ))
+      await send(message, f"{message.author.mention} rolled **{sum(pos) - sum(neg) + mod}**!")
   else:
     await send(message, "Invalid dice configuration! The config must start with xdy (optionally +/- xdy), have zero or more +/- xdy, and optionally end with +/- a modifier.", reaction = "x")
 

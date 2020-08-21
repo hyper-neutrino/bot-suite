@@ -34,7 +34,7 @@ commands = {
   "toplane": ["python3", "src/main.py", "toplane"],
   "jungler": ["python3", "src/main.py", "jungler"],
   "midlane": ["python3", "src/main.py", "midlane"],
-  "botlane": ["nodejs", "src/botlane.js"],
+  "botlane": ["node", "src/bots/botlane/main.js"],
   "support": ["python3", "src/main.py", "support"],
   "timer": ["python3", "src/main.py", "timer"],
   "neutrino": ["python3", "src/main.py", "neutrino"],
@@ -44,17 +44,17 @@ def start(name):
   if name in aliases:
     botname = aliases[name]
     if botname in bots:
-      raise BotError("{title} is already running!".format(title = titles[botname]))
+      raise BotError(f"{titles[botname]} is already running!")
     bots[botname] = subprocess.Popen(commands[botname], stdin = subprocess.PIPE, stdout = sys.stdout, stderr = sys.stderr)
     return "success"
-  raise BotError("'{name}' is not a recognized bot name!".format(name = name))
+  raise BotError(f"'{name}' is not a recognized bot name!")
 
 def stop(name):
   if name in aliases:
     botname = aliases[name]
     if botname not in bots:
-      raise BotError("{title} is not running!".format(title = titles[botname]))
+      raise BotError(f"{titles[botname]} is not running!")
     bots[botname].kill()
     del bots[botname]
     return "success"
-  raise BotError("'{name}' is not a recognized bot name!".format(name = name))
+  raise BotError(f"'{name}' is not a recognized bot name!")

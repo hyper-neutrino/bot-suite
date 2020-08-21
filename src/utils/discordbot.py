@@ -36,7 +36,7 @@ def english_list(items):
 
 async def send(message, *args, **kwargs):
   if "embed" in kwargs:
-    kwargs["embed"].set_footer(text = "Requested by {name}".format(name = message.author.display_name))
+    kwargs["embed"].set_footer(text = f"Requested by {message.author.display_name}")
   reply = await message.channel.send(*args, **{a: kwargs[a] for a in kwargs if a != "reaction"})
   if "reaction" in kwargs:
     if type(kwargs["reaction"]) == list:
@@ -47,7 +47,7 @@ async def send(message, *args, **kwargs):
       try:
         await message.add_reaction(emojis(message.guild).get(reaction, emoji_shorthand.get(reaction, reaction)))
       except:
-        log("Failed to add emoji {emoji}".format(emoji = reaction), "ERROR")
+        log(f"Failed to add emoji {reaction}", "ERROR")
   return reply
 
 async def get_member(guild, string, caller = None):
@@ -80,11 +80,11 @@ def get_role(guild, string):
   for role in guild.roles:
     if role.name == string:
       if match:
-        raise BotError("Found multiple roles called '{string}'".format(string = string))
+        raise BotError(f"Found multiple roles called '{string}'")
       match = role
   if match is not None:
     return match
-  raise BotError("Found no roles called '{string}'.".format(string = string))
+  raise BotError(f"Found no roles called '{string}'.")
 
 def get_color(string):
   if string == "":
@@ -120,7 +120,7 @@ class BotClient(discord.Client):
   
   async def announce(self, *args, **kwargs):
     for gid, cid in (await default("statreports", set())):
-      print("Announcing to {gid}#{cid}".format(gid = gid, cid = cid))
+      print(f"Announcing to {gid}#{cid}")
       try:
         await self.get_guild(gid).get_channel(cid).send(*args, **kwargs)
       except:
@@ -147,7 +147,7 @@ class BotClient(discord.Client):
     if self.prefix == "pls":
       embed = discord.Embed(
         title = "Help - Commands",
-        description = "Commands for this bot ({name}). Prefixing a command with `please` instead of `pls` will do the same thing but output any errors into the channel instead of ignoring them.".format(name = self.name),
+        description = f"Commands for this bot ({self.name}). Prefixing a command with `please` instead of `pls` will do the same thing but output any errors into the channel instead of ignoring them.",
         color = self.color
       )
     else:
@@ -160,13 +160,13 @@ class BotClient(discord.Client):
       if section == "": continue
       commands = []
       for _, syntax, description, _, _ in self.commands[section]:
-        commands.append("`{prefix} {syntax}`: {desc}".format(prefix = self.prefix, syntax = syntax, desc = description))
+        commands.append(f"`{self.prefix} {syntax}`: {description}")
       embed.add_field(name = section, value = "\n".join(commands), inline = False)
     
     await send(message, embed = embed, reaction = "check")
 
   async def on_message(self, message):
-    if message.content == "!!forcekill" or message.content == "!!forcekill {name}".format(name = self.name) and message.author.id in config["global-arguments"]["sudo"]:
+    if message.content == "!!forcekill" or message.content == f"!!forcekill {self.name}" and message.author.id in config["global-arguments"]["sudo"]:
       await send(message, "**<shutting down...>**", reaction = "!")
       os.kill(os.getpid(), 9)
     try:
@@ -210,13 +210,13 @@ class BotClient(discord.Client):
             for component, pattern in zip(components, patterns):
               try:
                 if type(pattern) == str:
-                  if re.match("^{pattern}$".format(pattern = pattern if case_sensitive else pattern.lower()), component if case_sensitive else component.lower()) is None:
+                  if re.match(f"^{pattern if case_sensitive else pattern.lower()}$", component if case_sensitive else component.lower()) is None:
                     break
                 else:
                   if not pattern(component):
                     break
               except:
-                log("Failed to parse pattern '{pattern}'".format(pattern = pattern), "ERROR")
+                log(f"Failed to parse pattern '{pattern}'", "ERROR")
                 break
             else:
               try:

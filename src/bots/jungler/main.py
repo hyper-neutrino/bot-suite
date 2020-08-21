@@ -3,6 +3,8 @@ import base64, datetime, discord, requests, traceback
 from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send, get_member
 
+from utils.errors import BotError
+
 from utils.lol.api import lol_region, watcher
 from utils.lol.utils import lol_current_embed, lol_current_player_embed, lol_game_embed, lol_player_embed
 
@@ -24,14 +26,11 @@ async def command_ext_link(command, message):
   if command[0] in ["lol", "cf", "dmoj"]:
     member = await get_member(message.guild, command[2], message.author) if len(command) > 3 else message.author
     ext = command[3] if len(command) > 3 else command[2]
-    old = (await default("{et}_links".format(et = command[0]), {})).get(member.id)
-    (await data())["{et}_links".format(et = command[0])][member.id] = ext
+    old = (await default(f"{command[0]}_links", {})).get(member.id)
+    (await data())[f"{command[0]}_links"][member.id] = ext
     await save_data()
-    await send(message, "Linked {name} to {ext}{prev}!".format(
-      name = member.display_name,
-      ext = ext,
-      prev = " (previously {ext})".format(ext = old) if old else ""
-    ), reaction = "check")
+    pm = f" (previously {old})" if old else ""
+    await send(message, f"Linked {member.display_name} to {ext}{pm}!", reaction = "check")
   else:
     await send(message, "Service does not exist! Currently supported: `lol` for League of Legends, `cf` for Codeforces, `dmoj` for DMOJ.", reaction = "x")
 
@@ -39,16 +38,13 @@ async def command_ext_link(command, message):
 async def command_ext_unlink(command, message):
   if command[0] in ["lol", "cf", "dmoj"]:
     member = await get_member(message.guild, command[2], message.author) if len(command) > 2 else message.author
-    old = (await default("{et}_links".format(et = command[0]), {})).get(member.id)
+    old = (await default(f"{command[0]}_links", {})).get(member.id)
     if old:
-      del (await data())["{et}_links".format(et = command[0])][member.id]
+      del (await data())[f"{command[0]}_links"][member.id]
       await save_data()
-      await send(message, "Unlinked {name} from {ext}!".format(
-        name = member.display_name,
-        ext = old
-      ), reaction = "check")
+      await send(message, f"Unlinked {member.display_name} from {old}!", reaction = "check")
     else:
-      await send(message, "{name} is not linked!".format(name = member.display_name), reaction = "x")
+      await send(message, f"{member.display_name} is not linked!", reaction = "x")
   else:
     await send(message, "Service does not exist! Currently supported: `lol` for League of Legends, `cf` for Codeforces, `dmoj` for DMOJ.", reaction = "x")
 
@@ -89,7 +85,7 @@ async def command_lol_report(command, message):
     queuetypes = set()
     for queue in queuestring.split("|"):
       if queue.strip().lower() not in qids:
-        await send(message, "Queue type not recognized! Allowed are: {qids}".format(qids = english_list(qids)), reaction = "x")
+        await send(message, f"Queue type not recognized! Allowed are: {english_list(qids)}", reaction = "x")
         break
       queuetypes |= qids[queue.strip().lower()]
     else:
@@ -109,10 +105,7 @@ async def command_lol_report(command, message):
           print(traceback.format_exc())
           await send(message, "Failed to create embed!", reaction = "x")
       else:
-        await send(message, "Could not find a game for {region}/{summoner} or summoner does not exist. Check your spelling; alternatively, this user has not played any games / enough games".format(
-          region = lol_region.upper(),
-          summoner = summs[0]
-        ), reaction = "x")
+        await send(message, f"Could not find a game for {lol_region.upper()}/{summs[0]} or summoner does not exist. Check your spelling; alternatively, this user has not played any games / enough games", reaction = "x")
 
 @client.command("League Commands", ["lol", "current-player", "?"], "lol current-player [summoner = me + friend + ...]", "generate a detailed report for a player / players for the first player's current league of legends game")
 @client.command("League Commands", ["lol", "current", "?"], "lol current [summoner = me + friend + ...]", "generate a report for a player's current league of legends game")
@@ -144,10 +137,7 @@ async def command_lol_current(command, message):
         await send(message, "Failed to create embed!", reaction = "x")
     except Exception as e:
       print(traceback.format_exc())
-      await send(message, "Could not find current game for {region}/{summoner} or summoner does not exist! Check your spelling, or the summoner may not be in game.".format(
-        region = lol_region.upper(),
-        summoner = summs[0]
-      ), reaction = "x")
+      await send(message, f"Could not find current game for {lol_region.upper()}/{summs[0]} or summoner does not exist! Check your spelling, or the summoner may not be in game.", reaction = "x")
 
 @client.command("Codeforces Commands", ["cf", "details", "?"], "cf details [account = me]", "get all public details of a codeforces user")
 @client.command("Codeforces Commands", ["cf", "rank", "?"], "cf rank [account = me]", "alias for `cf rating`")
@@ -170,13 +160,7 @@ async def command_cf_details(command, message):
     if rv["status"] == "OK":
       cfdata = rv["result"][0]
       if command[1] == "rank" or command[1] == "rating":
-        await send(message, "{user} is rank {rank} [{rating}] (max {maxrank} [{maxrating}])!".format(
-          user = cf,
-          rank = cfdata["rank"],
-          rating = cfdata["rating"],
-          maxrank = cfdata["maxRank"],
-          maxrating = cfdata["maxRating"]
-        ), reaction = "check")
+        await send(message, f"{cf} is rank {cfdata['rank']} [{cfdata['rating']}] (max {cfdata['maxRank']} [{cfdata['maxRating']}])!", reaction = "check")
       elif command[1] == "details":
         embed = discord.Embed(title = cf, color = 0x3333AA, url = "https://codeforces.com/profile/" + cf).set_image(url = "http:" + cfdata["avatar"])
         for key, name in [
@@ -190,17 +174,26 @@ async def command_cf_details(command, message):
           if cfdata.get(key):
             embed.add_field(name = name, value = str(cfdata[key]))
         if cfdata.get("country") or cfdata.get("city"):
-          embed.add_field(name = "Location", value = "{city}{country}".format(
-            city = "{c}, ".format(c = cfdata["city"]) if cfdata.get("city") else "",
-            country = cfdata["country"]
-          ))
-        embed.add_field(name = "Current Rank", value = "{rank} [{rating}]".format(rank = cfdata["rank"], rating = cfdata["rating"]))
-        embed.add_field(name = "Maximum Rank", value = "{rank} [{rating}]".format(rank = cfdata["maxRank"], rating = cfdata["maxRating"]))
+          city = f"{cfdata['city']}, " if cfdata.get("city") else ""
+          embed.add_field(name = "Location", value = f"{city}{cfdata['country']}")
+        embed.add_field(name = "Current Rank", value = f"{cfdata['rank']} [{cfdata['rating']}]")
+        embed.add_field(name = "Maximum Rank", value = f"{cfdata['maxRank']} [{cfdata['maxRating']}]")
         embed.add_field(name = "Registered Since", value = datetime.datetime.fromtimestamp(cfdata["registrationTimeSeconds"]).strftime("%B %d, %Y at %H:%M:%S"))
         embed.add_field(name = "Last Seen Online", value = datetime.datetime.fromtimestamp(cfdata["lastOnlineTimeSeconds"]).strftime("%B %d, %Y at %H:%M:%S"))
         await send(message, embed = embed, reaction = "check")
     else:
-      await send(message, "'{cf}' is not a Codeforces user!".format(cf = cf), reaction = "x")
+      await send(message, f"'{cf}' is not a Codeforces user!", reaction = "x")
+
+def dmoj_api(URL):
+  rv = requests.get(URL)
+  if rv.status_code != 200:
+    raise BotError(f"'{URL}' returned status {rv.status_code} (not 200)!")
+  data = rv.json()
+  if "error" in data:
+    raise BotError("Error fetching from DMOJ API; likely item does not exist!")
+  if "data" not in data:
+    raise BotError("Data not found; check the URL!")
+  return data["data"]
 
 @client.command("DMOJ Commands", ["dmoj", "details", "?"], "dmoj details [account = me]", "get all public details of a DMOJ user")
 @client.command("DMOJ Commands", ["dmoj", "rank", "?"], "dmoj rank [account = me]", "alias for `dmoj rating`")
@@ -219,34 +212,50 @@ async def command_dmoj_details(command, message):
     except:
       dm = command[2]
   if dm is not None:
-    rv = requests.get("https://dmoj.ca/api/v2/user/" + dm).json()
-    if "error" in rv:
-      await send(message, "Error fetching DMOJ user details; likely user does not exist.", reaction = "x")
+    dmdata = dmoj_api("https://dmoj.ca/api/v2/user/" + dm)["object"]
+    rating = dmdata["rating"]
+    if rating < 1000:
+      rank = "Newbie"
+    elif rating < 1200:
+      rank = "Amateur"
+    elif rating < 1500:
+      rank = "Expert"
+    elif rating < 1800:
+      rank = "Candidate Master"
+    elif rating < 2200:
+      rank = "Master"
+    elif rating < 3000:
+      rank = "Grandmaster"
     else:
-      dmdata = rv["data"]["object"]
-      rating = dmdata["rating"]
-      if rating < 1000:
-        rank = "Newbie"
-      elif rating < 1200:
-        rank = "Amateur"
-      elif rating < 1500:
-        rank = "Expert"
-      elif rating < 1800:
-        rank = "Candidate Master"
-      elif rating < 2200:
-        rank = "Master"
-      elif rating < 3000:
-        rank = "Grandmaster"
-      else:
-        rank = "Target"
-      if dmdata["rank"] == "admin":
-        rank += " (Admin)"
-      if command[1] == "rank" or command[1] == "rating":
-        await send(message, "{user} is rank {rank} [{rating}]!".format(
-          user = dmdata["username"],
-          rank = rank,
-          rating = rating
-        ), reaction = "check")
+      rank = "Target"
+    if dmdata["rank"] == "admin":
+      rank += " (Admin)"
+    if command[1] == "rank" or command[1] == "rating":
+      await send(message, f"{dmdata['username']} is rank {rank} [{rating}]!", reaction = "check")
+    elif command[1] == "details":
+      await send(message, embed = discord.Embed(
+        title = dmdata["username"],
+        color = 0x3333AA,
+        url = "https://dmoj.ca/user/" + dmdata["username"]
+      ).add_field(
+        name = "Points",
+        value = "%.2f" % dmdata["points"]
+      ).add_field(
+        name = "Solved Problems",
+        value = str(dmdata["problem_count"])
+      ).add_field(
+        name = "Contests",
+        value = str(len(dmdata["contests"]))
+      ).add_field(
+        name = "Organizations",
+        value = ", ".join(org["short_name"] for org in dmoj_api("https://dmoj.ca/api/v2/organizations")["objects"] if org["id"] in dmdata["organizations"])
+      ).add_field(
+        name = "Rank",
+        value = rank
+      ).add_field(
+        name = "Rating",
+        value = str(rating)
+      ), reaction = "check")
 
 set_client(client)
 

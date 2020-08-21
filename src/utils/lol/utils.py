@@ -230,7 +230,7 @@ async def lol_current_embed(guild, game, names):
     othernames = {(await default("lol_links", {})).get(member.id, "").lower() for member in (guild.members if guild else [])}
     for i, team in enumerate(teams):
       embed.add_field(
-        name = "Team {team}".format(team = i + 1),
+        name = f"Team {i + 1}",
         value = "\n" + (
           "**Bans**\n" + "\n".join(champs.get(ban["championId"], "No Ban") for ban in sorted([b for b in bans if b["teamId"] == (i + 1) * 100], key = lambda x: x["pickTurn"])) + "\n"
           if bans else ""

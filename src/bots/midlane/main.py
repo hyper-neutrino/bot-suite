@@ -31,13 +31,13 @@ async def command_lol_ranges(command, message):
   for champ in command[2:]:
     champ = champ.lower()
     if champ not in cmap:
-      await send(message, "{champ} is not a recognized champion name or ID!".format(champ = champ), reaction = "x")
+      await send(message, f"{champ} is not a recognized champion name or ID!", reaction = "x")
       break
     champs.add(cmap[champ])
   else:
     items = []
     for champ in champs:
-      data = requests.get("http://ddragon.leagueoflegends.com/cdn/10.16.1/data/en_US/champion/{champ}.json".format(champ = champ)).json()
+      data = requests.get(f"http://ddragon.leagueoflegends.com/cdn/10.16.1/data/en_US/champion/{champ}.json").json()
       items.append((data["data"][champ]["stats"]["attackrange"], data["data"][champ]["name"], "Basic Attack"))
       for i, spell in enumerate(data["data"][champ]["spells"]):
         ident = data["data"][champ]["name"] + " " + ("QWER"[i] if 0 <= i < 4 else "?")
@@ -57,10 +57,11 @@ async def command_lol_ranges(command, message):
       if stacked == [] or item[0] != stacked[-1][0]:
         stacked.append([item[0], []])
       stacked[-1][1].append((item[1], item[2]))
-    await send(message, "**Range Analysis**\n\n" + "\n".join("__{rng}__: {stack}".format(
-      rng = rng,
-      stack = ", ".join("{ident} ({name})".format(ident = ident, name = name) for ident, name in stack)
-    ) for rng, stack in stacked))
+    info = "**Range Analysis**\n"
+    for rng, stack in stacked:
+      stack = ", ".join(f"{ident} ({name})" for ident, name in stack)
+      info += f"\n__{rng}__: {stack}"
+    await send(message, info, reaction = "check")
 
 set_client(client)
 
