@@ -34,7 +34,7 @@ commands = {
   "toplane": ["python3", "src/main.py", "toplane"],
   "jungler": ["python3", "src/main.py", "jungler"],
   "midlane": ["python3", "src/main.py", "midlane"],
-  "botlane": ["node", "src/bots/botlane/main.js"],
+  "botlane": ["python3", "src/main.py", "botlane"],
   "support": ["python3", "src/main.py", "support"],
   "timer": ["python3", "src/main.py", "timer"],
   "neutrino": ["python3", "src/main.py", "neutrino"],

@@ -1,8 +1,9 @@
 debug.py
-data.pickle
-data-backup.pickle
+*pickle
 data.pickle.lock
 config.json
+log.txt
+*.webm
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
