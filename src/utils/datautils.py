@@ -55,6 +55,10 @@ async def default(key, val, obj = None):
     await save_data()
   return obj[key]
 
+def discard(obj, key):
+  if key in obj:
+    del obj[key]
+
 async def save_data():
   if data_cache.get("working"):
     with lock:

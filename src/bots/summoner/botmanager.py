@@ -17,7 +17,9 @@ aliases = {
   "support": "support",
   "sup": "support",
   "timer": "timer",
-  "neutrino": "neutrino"
+  "neutrino": "neutrino",
+  "testing": "testing",
+  "test": "testing"
 }
 
 titles = {
@@ -27,17 +29,19 @@ titles = {
   "botlane": "BotLane",
   "support": "Support",
   "timer": "Debate Timer",
-  "neutrino": "Neutrino's Bot"
+  "neutrino": "Neutrino's Bot",
+  "testing": "Testing Bot"
 }
 
 commands = {
-  "toplane": ["python3", "src/main.py", "toplane"],
-  "jungler": ["python3", "src/main.py", "jungler"],
-  "midlane": ["python3", "src/main.py", "midlane"],
-  "botlane": ["python3", "src/main.py", "botlane"],
-  "support": ["python3", "src/main.py", "support"],
-  "timer": ["python3", "src/main.py", "timer"],
+  "toplane" : ["python3", "src/main.py", "toplane" ],
+  "jungler" : ["python3", "src/main.py", "jungler" ],
+  "midlane" : ["python3", "src/main.py", "midlane" ],
+  "botlane" : ["python3", "src/main.py", "botlane" ],
+  "support" : ["python3", "src/main.py", "support" ],
+  "timer"   : ["python3", "src/main.py", "timer"   ],
   "neutrino": ["python3", "src/main.py", "neutrino"],
+  "testing" : ["python3", "src/main.py", "debate"  ]
 }
 
 def start(name):

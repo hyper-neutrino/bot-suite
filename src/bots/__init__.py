@@ -1,19 +1,19 @@
 def start(name):
   if name == "toplane":
-    from .toplane  import client
-    client.main()
+    from .toplane  import start
+    start()
   elif name == "jungler":
-    from .jungler  import client
-    client.main()
+    from .jungler  import start
+    start()
   elif name == "midlane":
-    from .midlane  import client
-    client.main()
+    from .midlane  import start
+    start()
   elif name == "botlane":
-    from .botlane  import client
-    client.main()
+    from .botlane  import start
+    start()
   elif name == "support":
-    from .support  import client
-    client.main()
+    from .support  import start
+    start()
   elif name == "summoner":
     from .summoner import start
     start()
@@ -23,6 +23,8 @@ def start(name):
   elif name == "neutrino":
     from .neutrino import start
     start()
+  elif name == "testing":
+    from .testing  import start
   else:
     print("?")
     return
