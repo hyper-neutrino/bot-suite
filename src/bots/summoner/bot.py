@@ -7,7 +7,7 @@ from utils.discordbot import BotClient, send, get_member
 
 client = None
 
-botlist = ["toplane", "jungler", "midlane", "botlane", "support", "timer", "neutrino", "debate", "testing"]
+botlist = ["toplane", "jungler", "midlane", "botlane", "support", "timer", "neutrino", "testing"]
 
 class SummonerClient(BotClient):
   def __init__(self):

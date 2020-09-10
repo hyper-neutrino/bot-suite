@@ -3,7 +3,7 @@ import base64, discord, requests
 from utils.datautils import config, set_client
 from utils.discordbot import BotClient, send, english_list
 
-from utils.lol.api import watcher, lol_version
+from utils.lol.api import watcher, lol_region, lol_version, champs
 
 client = None
 
@@ -24,6 +24,12 @@ for key in champions:
 @client.command("Testing Commands", ["test"], "test", "Test the Midlane bot")
 async def command_test(command, message):
   await send(message, "Test success!", reaction = "check")
+
+@client.command("League Research Commands", ["lol", "rotation"], "lol rotation", "check the current free champion rotation")
+async def command_lol_rotation(command, message):
+  champions = [champs[cid] for cid in watcher.champion.rotations(lol_region)["freeChampionIds"]]
+  champions.sort()
+  await send(message, f"This week's free rotation is: {english_list(champions)}.", reaction = "check")
 
 @client.command("League Research Commands", ["lol", "ranges", "+"], "lol ranges <champion> [champion...]", "compare ability ranges for all champions")
 async def command_lol_ranges(command, message):
@@ -64,6 +70,3 @@ async def command_lol_ranges(command, message):
     await send(message, info, reaction = "check")
 
 set_client(client)
-
-def start():
-  client.run(config["discord-tokens"]["midlane"])

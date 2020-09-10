@@ -1,4 +1,4 @@
-import base64, discord, requests
+import base64, discord, random, requests
 
 from utils.datautils import config, data, default, save_data, set_client
 from utils.discordbot import BotClient, send, get_member, get_role, get_color, english_list
@@ -86,7 +86,31 @@ async def command_alias(command, message):
   else:
     await send(message, f"'{command[1].lower()}' is not aliased to any user!", reaction = "check")
 
-set_client(client)
+@client.command("Management Commands", ["collapse", "\d+", "?", "?"], "collapse <start id> [end id]", "delete messages between two messages and output a link to them")
+async def command_collapse(command, message):
+  sid = int(command[1])
+  eid = int(command[2]) if len(command) > 2 else -1
+  messages = []
+  try:
+    msg = await message.channel.fetch_message(sid)
+    messages.append((msg.author.name, msg.content))
+    await msg.delete()
+  except:
+    pass
+  deleted = await message.channel.purge(limit = None, before = (await message.channel.fetch_message(eid)) if eid != -1 else None, after = msg)
+  for msg in sorted(deleted, key = lambda m: m.created_at.timestamp()):
+    messages.append((msg.author.name, msg.content))
+  try:
+    msg = await message.channel.fetch_message(eid)
+    messages.append((msg.author.name, msg.content))
+    await msg.delete()
+  except:
+    pass
+  rid = ""
+  for _ in range(20):
+    rid += random.choice("abcdefghijklmnopqrstuvwxyz0123456789")
+  (await default("collapse", {}))[rid] = messages
+  await save_data()
+  await send(message, f"Collapsed {len(messages)} messages! See them at https://discord.hyper-neutrino.xyz/collapse/{rid}.", reaction = "check")
 
-def start():
-  client.run(config["discord-tokens"]["support"])
+set_client(client)

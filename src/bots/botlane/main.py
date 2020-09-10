@@ -3,7 +3,7 @@ import base64, discord, hashlib, math, os, requests, time, traceback, youtube_dl
 from discord.utils import get
 
 from utils.datautils import config, data, default, discard, save_data, set_client
-from utils.discordbot import BotClient, send
+from utils.discordbot import BotClient, emoji_shorthand, send
 from utils.errors import BotError
 from utils.logging import log
 
@@ -87,9 +87,9 @@ async def command_leave(command, message):
 
 async def get_voice(message):
   voice = get(client.voice_clients, guild = message.guild)
-  if message.author.voice:
+  if message.author.id in config["global-arguments"]["sudo"] or message.author.voice:
     if voice and voice.is_connected():
-      if voice.channel == message.author.voice.channel:
+      if message.author.id in config["global-arguments"]["sudo"] or voice.channel == message.author.voice.channel:
         return voice
       else:
         raise BotError("You must be in the same channel as me to use this command!")
@@ -97,7 +97,8 @@ async def get_voice(message):
       return await message.author.voice.channel.connect()
   else:
     raise BotError("You must be connected to a voice channel to use this command!")
-\
+
+@client.command("Voice Commands", ["playshuffle", ".+"], "play <url>", "same as `play` but inserts songs shuffled (if called on a playlist; otherwise, it is the exact same as `play`)")
 @client.command("Voice Commands", ["play", ".+"], "play <url>", "play audio from YouTube (appends a song to the queue if playing, and places at the front if not)")
 async def command_play(command, message):
   voice = await get_voice(message)
@@ -106,10 +107,24 @@ async def command_play(command, message):
     queue = await default(message.guild.id, [], queues)
     if voice.is_playing():
       queue.append((command[1], info, message.author))
-      await send(message, f"Queued `{info['title']}`!", reaction = "check")
+      embed = discord.Embed(
+        title = "Added to Queue!",
+        description = f"[**{info['title']}**]({command[1]})",
+        color = 0x3333AA
+      ).add_field(
+        name = "Channel",
+        value = f"[{info['uploader']}]({info['uploader_url']})"
+      ).add_field(
+        name = "Song Length",
+        value = ftime(info["duration"])
+      )
+      if info["thumbnails"]:
+        embed.set_thumbnail(url = info["thumbnails"][-1]["url"])
+      await send(message, embed = embed, reaction = "check")
     else:
       queue.insert(0, (command[1], info, message.author))
       await playaudio(message.channel)
+      await message.add_reaction(emoji_shorthand["check"])
   except:
     print(traceback.format_exc())
     await send(message, f"Invalid URL: `{command[1]}`!", reaction = "x")
@@ -221,8 +236,10 @@ Requested by: {user.mention}""",
       color = 0x3333AA
     ), reaction = "check")
 
+@client.command("Voice Commands", ["history", "?"], "history [page = 1]", "display the song history")
 @client.command("Voice Commands", ["queue", "?"], "queue [page = 1]", "display the song queue")
 async def command_queue(command, message):
+  itemmap = histories if command[0] == "history" else queues
   try:
     page = int(command[1]) if len(command) > 1 else 1
   except:
@@ -233,29 +250,32 @@ async def command_queue(command, message):
       await send(message, "Page must be a positive integer!", reaction = "x")
     else:
       page -= 1
-      if not queues.get(message.guild.id):
-        await send(message, "Nothing is playing in this server!", reaction = "x")
+      mv = 0 if command[0] == "history" else 1
+      if len(await default(message.guild.id, [], itemmap)) < mv:
+        await send(message, "Nothing is in the history (has finished playing) in this server! (this message should actually never occur)" if command[0] == "history" else "Nothing is playing in this server!", reaction = "x")
       else:
         voice = await get_voice(message)
-        queue = queues[message.guild.id]
-        url, info, user = queue[0]
+        items = itemmap[message.guild.id]
+        url, info, user = queues[message.guild.id][0]
         msg = f"""__Now Playing__
     [{cutmax(info['title'], 85)}]({url})
     by [{cutmax(info['uploader'], 85)}]({info['uploader_url']})
-    `{ftime(info['duration'])}` Requested by: {user.mention}
+    `{ftime(gettime(voice, message.guild.id))} / {ftime(info['duration'])}` Requested by: {user.mention}
 
-    __Song Queue__
+    __Song {'History (most recent song first)' if command[0] == 'history' else 'Queue'}__
     """
-        if len(queue) > 1:
-          if page * 10 >= len(queue) - 1:
-            msg += f"There are only {int(math.ceil((len(queue) - 1) / 10))} pages of songs in the queue!"
+        if len(items) > mv:
+          maxpages = int(math.ceil((len(items) - mv) / 10))
+          if page >= maxpages:
+            msg += f"There are only {maxpages} pages of songs in the {command[0]}!" if maxpages == 1 else f"There is only 1 page of songs in the {command[0]}!"
           else:
-            for pos, (url, info, user) in enumerate(queue[page * 10:page * 10 + 10]):
+            for pos, (url, info, user) in enumerate(items[::-1 if command[0] == "history" else 1][page * 10 + mv:][:10]):
               msg += f"{page * 10 + pos + 1}. [{cutmax(info['title'], 85)}]({url}) | by [{cutmax(info['uploader'], 85)}]({info['uploader_url']})\n`{ftime(info['duration'])}` Requested by: {user.mention}\n\n"
+            msg += f"Page {page + 1}/{maxpages}"
         else:
-          msg += "No more songs are queued!"
+          msg += "No songs have finished playing yet!" if command[0] == "history" else "No more songs are queued!"
         
-        await send(message, embed = discord.Embed(title = f"Queue for {message.guild.name}", description = msg, color = 0x3333AA), reaction = "check")
+        await send(message, embed = discord.Embed(title = f"{'History' if command[0] == 'history' else 'Queue'} for {message.guild.name}", description = msg, color = 0x3333AA), reaction = "check")
 
 @client.command("", ["testsongs"], "", "")
 async def command_testsongs(command, message):
@@ -307,7 +327,20 @@ async def playaudio(channel):
     playtime[channel.guild.id] = 0
     timetrack[channel.guild.id] = time.time()
 
-    await channel.send(f"Now playing `{queue[0][1]['title']}`!")
+    embed = discord.Embed(
+      title = "Now Playing!",
+      description = f"[**{queue[0][1]['title']}**]({queue[0][0]})",
+      color = 0x3333AA
+    ).add_field(
+      name = "Channel",
+      value = f"[{queue[0][1]['uploader']}]({queue[0][1]['uploader_url']})"
+    ).add_field(
+      name = "Song Length",
+      value = ftime(queue[0][1]["duration"])
+    )
+    if queue[0][1]["thumbnails"]:
+      embed.set_thumbnail(url = queue[0][1]["thumbnails"][-1]["url"])
+    await channel.send(embed = embed)
   
 async def postplay(channel, error):
   print(f"Done playing in {channel.guild.name}#{channel.name}")
@@ -322,6 +355,3 @@ async def postplay(channel, error):
     await playaudio(channel)
 
 set_client(client)
-
-def start():
-  client.run(config["discord-tokens"]["botlane"])

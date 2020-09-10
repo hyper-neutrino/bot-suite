@@ -258,6 +258,3 @@ async def command_dmoj_details(command, message):
       ), reaction = "check")
 
 set_client(client)
-
-def start():
-  client.run(config["discord-tokens"]["jungler"])

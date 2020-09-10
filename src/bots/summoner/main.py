@@ -53,6 +53,7 @@ async def profiles():
       if name in bots:
         bots[name].stdin.write(bytes("profilepic " + profiles[name] + "\n", "utf-8"))
         bots[name].stdin.flush()
+    await asyncio.sleep(5)
 
 def start():
   loop = asyncio.get_event_loop()

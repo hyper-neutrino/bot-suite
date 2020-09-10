@@ -41,7 +41,7 @@ commands = {
   "support" : ["python3", "src/main.py", "support" ],
   "timer"   : ["python3", "src/main.py", "timer"   ],
   "neutrino": ["python3", "src/main.py", "neutrino"],
-  "testing" : ["python3", "src/main.py", "debate"  ]
+  "testing" : ["python3", "src/main.py", "testing" ]
 }
 
 def start(name):

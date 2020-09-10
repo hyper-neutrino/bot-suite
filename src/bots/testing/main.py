@@ -5,18 +5,15 @@ from utils.discordbot import BotClient, send, get_member, get_role, get_color, e
 
 client = None
 
-class SupportClient(BotClient):
+class TestingClient(BotClient):
   def __init__(self):
     BotClient.__init__(self)
-    self.name = "support"
+    self.name = "testing"
 
-client = SupportClient()
+client = TestingClient()
 
-@client.command("Testing Commands", ["test"], "test", "Test the Support bot")
+@client.command("Testing Commands", ["test"], "test", "Test the Testing bot")
 async def command_test(command, message):
   await send(message, "Test success!", reaction = "check")
 
 set_client(client)
-
-def start():
-  client.run(config["discord-tokens"]["support"])

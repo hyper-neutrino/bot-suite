@@ -184,9 +184,10 @@ class BotClient(discord.Client):
       lowered = list(map(str.lower, components))
       if lowered == [self.prefix, "help"] + ([self.name] if self.name and self.prefix == "pls" else []) or self.prefix == "pls" and lowered == ["please", "help"] + ([self.name] if self.name else []):
         await self.help(message)
-      if lowered[0] == self.prefix or self.prefix == "pls" and lowered[0] == "please":
+      if self.prefix == "" or lowered[0] == self.prefix or self.prefix == "pls" and lowered[0] == "please":
         show_error = components[0] == "please"
-        components = components[1:]
+        if self.prefix != "":
+          components = components[1:]
         for section in self.sections:
           for regex, _, _, process, case_sensitive in self.commands[section]:
             if not regex: continue
@@ -236,14 +237,11 @@ class BotClient(discord.Client):
   
   async def edit_pfp(self, url):
     try:
-      with open("log.txt", "a") as f:
-        f.write(self.name + " - changing profile\n")
+      print(self.name + " - changing profile")
       await self.user.edit(avatar = requests.get(url).content)
-      with open("log.txt", "a") as f:
-        f.write("success!")
+      print("success!")
     except:
-      with open("log.txt", "a") as f:
-        f.write(traceback.format_exc() + "\n")
+      print(traceback.format_exc())
   
   async def dircomm(self, command):
     if command.startswith("profilepic "):

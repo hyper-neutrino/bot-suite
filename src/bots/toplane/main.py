@@ -258,18 +258,8 @@ async def command_roll(command, message):
     await send(message, "Invalid dice configuration! The config must start with xdy (optionally +/- xdy), have zero or more +/- xdy, and optionally end with +/- a modifier.", reaction = "x")
 
 @client.command("Miscellaneous Commands", ["rickroll", ".+"], "rickroll <channel>", "connect to a voice channel and play 'Never Gonna Give You Up' by Rick Astley")
-async def command_rickroll(command, message):
-  global connection
-  if connection:
-    await send(message, "I am already connected to a voice channel!", reaction = "x")
-  else:
-    for channel in await message.guild.fetch_channels():
-      if type(channel) == discord.VoiceChannel and channel.name == command[1]:
-        connection = await channel.connect(timeout = 3)
-        connection.play(await discord.FFmpegOpusAudio.from_probe("rickroll.mp3"))
-    await send(message, "Enjoy :)", reaction = "check")
-
 @client.command("Miscellaneous Commands", ["stickbug", ".+"], "stickbug <channel>", "connect to a voice channel and play the stickbug song")
+@client.command("Miscellaneous Commands", ["thx", ".+"], "thx <channel>", "connect to a voice channel and play the loudest sound created by humans")
 async def command_rickroll(command, message):
   global connection
   if connection:
@@ -278,7 +268,7 @@ async def command_rickroll(command, message):
     for channel in await message.guild.fetch_channels():
       if type(channel) == discord.VoiceChannel and channel.name == command[1]:
         connection = await channel.connect(timeout = 3)
-        connection.play(await discord.FFmpegOpusAudio.from_probe("stickbug.mp3"))
+        connection.play(await discord.FFmpegOpusAudio.from_probe(f"{command[0]}.mp3"))
     await send(message, "Enjoy :)", reaction = "check")
 
 @client.command("Miscellaneous Commands", ["gtfo"], "gtfo", "alias for `disconnect`")
@@ -294,6 +284,3 @@ async def command_disconnect(command, message):
     await send(message, "I am not connected to any voice channels!", reaction = "x")
 
 set_client(client)
-
-def start():
-  client.run(config["discord-tokens"]["toplane"])

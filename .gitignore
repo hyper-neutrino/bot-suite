@@ -4,6 +4,8 @@ data.pickle.lock
 config.json
 log.txt
 *.webm
+music
+music/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
