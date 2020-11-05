@@ -51,6 +51,10 @@ async def send(message, *args, **kwargs):
   return reply
 
 async def get_member(guild, string, caller = None):
+  if isinstance(string, int):
+    for member in guild.members:
+      if member.id == string:
+        return member
   match = None
   for member in guild.members:
     if member.display_name == string or member.name == string:

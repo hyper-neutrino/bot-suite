@@ -179,13 +179,14 @@ async def command_anagram_remove(command, message):
 async def command_anagram_leaderboard(command, message):
   scores = []
   for gid, mid in (await default("puzzlepoints", {})):
+    if gid != message.guild.id: continue
     points = (await data())["puzzlepoints"][(gid, mid)].get("anagram", 0)
     if points:
       scores.append((points, message.guild.get_member(mid)))
   scores.sort(reverse = True)
   await send(message, embed = discord.Embed(
     title = "Anagram Leaderboard",
-    description = "\n".join(f"{member.mention} - {score}" for score, member in scores) or "The leaderboard is empty!"
+    description = "\n".join(f"{member} - {score}" for score, member in scores) or "The leaderboard is empty!"
   ), reaction = "check")
 
 @client.command("Reddit Commands", ["ket"], "ket", "alias for `cat`")
@@ -263,13 +264,13 @@ async def command_roll(command, message):
 async def command_rickroll(command, message):
   global connection
   if connection:
-    await send(message, "I am already connected to a voice channel!", reaction = "x")
-  else:
-    for channel in await message.guild.fetch_channels():
-      if type(channel) == discord.VoiceChannel and channel.name == command[1]:
-        connection = await channel.connect(timeout = 3)
-        connection.play(await discord.FFmpegOpusAudio.from_probe(f"{command[0]}.mp3"))
-    await send(message, "Enjoy :)", reaction = "check")
+    await connection.disconnect()
+    connection = None
+  for channel in await message.guild.fetch_channels():
+    if type(channel) == discord.VoiceChannel and channel.name == command[1]:
+      connection = await channel.connect(timeout = 3)
+      connection.play(await discord.FFmpegOpusAudio.from_probe(f"{command[0]}.mp3"))
+  await send(message, "Enjoy :)", reaction = "check")
 
 @client.command("Miscellaneous Commands", ["gtfo"], "gtfo", "alias for `disconnect`")
 @client.command("Miscellaneous Commands", ["dc"], "dc", "alias for `disconnect`")

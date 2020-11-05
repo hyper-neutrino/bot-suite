@@ -9,6 +9,29 @@ class SupportClient(BotClient):
   def __init__(self):
     BotClient.__init__(self)
     self.name = "support"
+  
+  async def on_raw_reaction_add(self, payload):
+    if payload.message_id == 767970087021707265:
+      if payload.emoji.name == "1️⃣":
+        await payload.member.add_roles(get_role(payload.member.guild, "legger"))
+      if payload.emoji.name == "2️⃣":
+        await payload.member.add_roles(get_role(payload.member.guild, "crewmate"))
+      if payload.emoji.name == "3️⃣":
+        await payload.member.add_roles(get_role(payload.member.guild, "minecrafter"))
+      if payload.emoji.name == "4️⃣":
+        await payload.member.add_roles(get_role(payload.member.guild, "traveler"))
+  
+  async def on_raw_reaction_remove(self, payload):
+    guild = self.get_guild(payload.guild_id)
+    if payload.message_id == 767970087021707265:
+      if payload.emoji.name == "1️⃣":
+        await guild.get_member(payload.user_id).remove_roles(get_role(guild, "legger"))
+      if payload.emoji.name == "2️⃣":
+        await guild.get_member(payload.user_id).remove_roles(get_role(guild, "crewmate"))
+      if payload.emoji.name == "3️⃣":
+        await guild.get_member(payload.user_id).remove_roles(get_role(guild, "minecrafter"))
+      if payload.emoji.name == "4️⃣":
+        await guild.get_member(payload.user_id).remove_roles(get_role(guild, "traveler"))
 
 client = SupportClient()
 
@@ -86,6 +109,10 @@ async def command_alias(command, message):
   else:
     await send(message, f"'{command[1].lower()}' is not aliased to any user!", reaction = "check")
 
+@client.command("User Utility Commands", ["user", "list"], "user list", "list all members of the server")
+async def command_alias(command, message):
+  await send(message, ", ".join(str(member) for member in message.guild.members), reaction = "check")
+
 @client.command("Management Commands", ["collapse", "\d+", "?", "?"], "collapse <start id> [end id]", "delete messages between two messages and output a link to them")
 async def command_collapse(command, message):
   sid = int(command[1])
@@ -97,7 +124,10 @@ async def command_collapse(command, message):
     await msg.delete()
   except:
     pass
-  deleted = await message.channel.purge(limit = None, before = (await message.channel.fetch_message(eid)) if eid != -1 else None, after = msg)
+  try:
+    deleted = await message.channel.purge(limit = None, before = (await message.channel.fetch_message(eid)) if eid != -1 else None, after = msg)
+  except:
+    deleted = []
   for msg in sorted(deleted, key = lambda m: m.created_at.timestamp()):
     messages.append((msg.author.name, msg.content))
   try:
@@ -109,8 +139,11 @@ async def command_collapse(command, message):
   rid = ""
   for _ in range(20):
     rid += random.choice("abcdefghijklmnopqrstuvwxyz0123456789")
-  (await default("collapse", {}))[rid] = messages
-  await save_data()
-  await send(message, f"Collapsed {len(messages)} messages! See them at https://discord.hyper-neutrino.xyz/collapse/{rid}.", reaction = "check")
+  if len(messages) == 0:
+    await send(message, "Didn't collapse anything!", reaction = "check")
+  else:
+    (await default("collapse", {}))[rid] = messages
+    await save_data()
+    await send(message, f"Collapsed {len(messages)} message{'' if len(messages) == 1 else 's'}! See {'it' if len(messages) == 1 else 'them'} at https://discord.hyper-neutrino.xyz/collapse/{rid}.", reaction = "check")
 
 set_client(client)

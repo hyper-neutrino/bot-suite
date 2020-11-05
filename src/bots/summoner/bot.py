@@ -45,7 +45,7 @@ async def command_test(command, message):
 @client.command("Utility Commands", ["ping"], "ping", "check your ping")
 async def command_ping(command, message):
   ping = int((time.time() - (message.created_at - datetime.datetime(1970, 1, 1)) / datetime.timedelta(seconds = 1)) * 1000)
-  await send(message, "Pong! ({ping} ms)", reaction = "🏓")
+  await send(message, f"Pong! ({ping} ms)", reaction = "🏓")
 
 @client.command("Bot Manager Commands", ["statwatch"], "statwatch", "watch bot status reports in this channel")
 async def command_statwatch(command, message):
@@ -133,5 +133,32 @@ async def command_unignore(command, message):
       await send(message, f"{member.mention} is no longer being ignored!", reaction = "check")
     else:
       await send(message, f"{member.display_name} is not currently ignored!", reaction = "x")
+
+@client.command("Miscellaneous Commands", ["echo", "+"], "echo <a> <...>", "repeat the message")
+async def command_echo(command, message):
+  await send(message, message.content.split(maxsplit = 2)[2])
+
+@client.command("Debug Commands", ["data", ".+"], "data <variable>", "output the data variable")
+async def command_data(command, message):
+  if message.author.id == 242101077061664779:
+    await send(message, "```python\n" + str((await data())[command[1]]) + "\n```")
+    
+# @client.command("Election Commands", ["election", "watch"], "election watch", "start watching the US election")
+# @client.command("Election Commands", ["election", "unwatch"], "election unwatch", "stop watching the US election")
+# async def command_election_watch(command, message):
+#   if command[1].lower() == "watch":
+#     if message.channel.id in (await data())["election_channels"]:
+#       await send(message, "Already watching US election results in this channel.")
+#     else:
+#       (await data())["election_channels"].add(message.channel.id)
+#       await save_data()
+#       await send(message, "Now watching US election results in this channel.")
+#   else:
+#     if message.channel.id in (await data())["election_channels"]:
+#       (await data())["election_channels"].discard(message.channel.id)
+#       await save_data()
+#       await send(message, "No longer watching US election results in this channel.")
+#     else:
+#       await send(message, "Not currently watching US election results in this channel.")
 
 set_client(client)

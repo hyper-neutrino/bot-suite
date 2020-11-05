@@ -1,11 +1,11 @@
-import asyncio, datetime, discord, json, pickle, random, traceback
+import asyncio, datetime, discord, json, pickle, random, requests, traceback
 
 from aioconsole import ainput
 
 from .bot import client
 from .botmanager import start, stop, aliases, bots
 
-from utils.datautils import config, lock
+from utils.datautils import config, data, lock
   
 async def backup():
   while True:
@@ -25,6 +25,32 @@ async def backup():
 
 async def startbot():
   await client.start(config["discord-tokens"]["summoner"])
+
+# async def pull_election_results():
+#   await asyncio.sleep(5)
+#   dl = rl = 0
+#   while True:
+#     try:
+#       r = requests.get("https://www.theguardian.com/us-news/ng-interactive/2020/nov/03/us-election-2020-live-results-donald-trump-joe-biden-who-won-presidential-republican-democrat")
+#       if r.status_code == 200:
+#         d_ = r.text[r.text.find("<div class=\"ge-bar__count ge-bar__count--p color--D\">") + 54:]
+#         r_ = r.text[r.text.find("<div class=\"ge-bar__count ge-bar__count--p color--R\">") + 54:]
+#         dt = int(d_[:d_.find("<")])
+#         rt = int(r_[:r_.find("<")])
+#         if dt == dl and rt == rl or dt < dl or rt < rl: continue
+#         dl = dt
+#         rl = rt
+#         if dt < rt:
+#           for cid in (await data())["election_channels"]: await client.get_channel(cid).send(f"Trump is winning {rt}-{dt}.")
+#         elif dt > rt:
+#           for cid in (await data())["election_channels"]: await client.get_channel(cid).send(f"Biden is winning {dt}-{rt}.")
+#         else:
+#           for cid in (await data())["election_channels"]: await client.get_channel(cid).send(f"Trump and Biden are tied {rt}-{dt}.")
+#       else:
+#         for cid in (await data())["election_channels"]: await client.get_channel(cid).send("Fetching election results failed! HTTP status code: " + str(r.status_code))
+#     except:
+#       print(traceback.format_exc())
+#     await asyncio.sleep(120)
 
 async def direct():
   while True:
@@ -60,6 +86,7 @@ def start():
   loop.run_until_complete(asyncio.gather(
     startbot(),
     backup(),
+#     pull_election_results(),
     profiles(),
     direct()
   ))
